@@ -7,7 +7,6 @@ import authRoutes from "./routes/auth.routes";
 import proposalsRoutes from "./routes/proposals.routes";
 import betsRoutes from "./routes/bets.routes";
 import mysql from "mysql2/promise";
-import { checkMatchStatus } from "./riot_watcher/riot_watcher";
 
 import { Request, Response } from "express";
 

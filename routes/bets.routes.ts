@@ -17,14 +17,17 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
 
     const sqlCheck = "SELECT user_coins FROM user WHERE user_name = ?";
     const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
+    const sqlBetCheck = "SELECT bet_id, bet_amount FROM bet WHERE bet_user = ? AND bet_proposal = ?";
     const sqlInsert = "INSERT INTO bet (bet_user, bet_proposal, bet_amount) VALUES (?, ?, ?)";
-    const sqlUpdate = "UPDATE user SET user_coins = user_coins - ? WHERE user_name = ?";
+    const sqlUpdateBet = "UPDATE bet SET bet_amount = bet_amount + ? WHERE bet_id = ?";
+    const sqlUpdateCoins = "UPDATE user SET user_coins = user_coins - ? WHERE user_name = ?";
 
     try {
         const [rows] = await db.query<RowDataPacket[]>(sqlCheck, [username]);
 
         if (rows.length === 0) {
             res.status(404).json({ message: "User not found" });
+            return;
         }
 
         const userCoins = rows[0].user_coins;
@@ -33,16 +36,26 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
 
         if (rows1.length === 0) {
             res.status(404).json({ message: "Id not found" });
+            return;
         }
 
         const userId = rows1[0].user_id;
 
         if (userCoins < betAmount) {
             res.status(400).json({ message: "Insufficient coins" });
+            return;
         }
 
-        await db.query(sqlInsert, [userId, proposalId, betAmount]);
-        await db.query(sqlUpdate, [betAmount, username]);
+        const [betRows] = await db.query<RowDataPacket[]>(sqlBetCheck, [userId, proposalId]);
+
+        if (betRows.length > 0) {
+            const betId = betRows[0].bet_id;
+            await db.query(sqlUpdateBet, [betAmount, betId]);
+        } else {
+            await db.query(sqlInsert, [userId, proposalId, betAmount]);
+        }
+
+        await db.query(sqlUpdateCoins, [betAmount, username]);
 
         res.status(200).json({ message: "Bet placed successfully" });
     } catch (err) {
