@@ -160,12 +160,15 @@ router.post(
 
       const user = rows[0];
       const currentDate = new Date();
-      const currentDateWithoutSeconds = currentDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+      const lastClaimDate = new Date(user.user_dailytime);
+      const oneDayInMs = 24 * 60 * 60 * 1000;
 
-      if (user.user_daily) {
+      if (user.user_daily && currentDate.getTime() - lastClaimDate.getTime() < oneDayInMs) {
         res.status(400).json({ message: "Daily reward already claimed" });
         return;
       }
+
+      const currentDateWithoutSeconds = currentDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
 
       const sqlUpdate = `
         UPDATE user
