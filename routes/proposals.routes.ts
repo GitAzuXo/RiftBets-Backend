@@ -64,13 +64,22 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
                     "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
                     [payout, bet.bet_user]
                 );
+
+                await db.query(
+                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'WIN' WHERE bet_proposal = ?, bet_user = ?",
+                    [proposalId, bet.bet_user]
+                );
+            } else {
+                await db.query(
+                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'LOSE' WHERE bet_proposal = ?, bet_user = ?",
+                    [proposalId, bet.bet_user]
+                );
             }
         }
 
-        // Mark proposal as finished
         await db.query(
             "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
-            [result, proposalId]
+            [proposalId]
         );
 
         res.status(200).json({ message: "Proposal finished and payouts processed" });
