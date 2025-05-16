@@ -13,6 +13,7 @@ router.get("/getAll", (req, res) => {
         COALESCE(SUM(b.bet_amount), 0) AS prop_total_amount,
         COUNT(DISTINCT b.bet_user) AS prop_nbPeople
     FROM proposals p
+    WHERE p.prop_available = 1
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
     GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_available;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
