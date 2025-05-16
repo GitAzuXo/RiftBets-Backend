@@ -60,7 +60,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
             ) {
                 payout = bet.bet_amount * proposal.prop_odds;
                 await db.query(
-                    "UPDATE users SET user_balance = user_balance + ? WHERE user_id = ?",
+                    "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
                     [payout, bet.bet_user]
                 );
             }
