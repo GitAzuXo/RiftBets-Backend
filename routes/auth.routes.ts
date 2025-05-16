@@ -71,4 +71,30 @@ router.get("/protected", passport.authenticate("jwt", { session: false }),
   }
 );
 
+export const requireAdmin = async (req: Request): Promise<boolean> => {
+  try {
+    const user = req.user as { username?: string };
+    if (!user || !user.username) {
+      return false;
+    }
+
+    const [results]: [RowDataPacket[], FieldPacket[]] = await db.query<RowDataPacket[]>(
+      "SELECT user_role FROM user WHERE user_name = ?",
+      [user.username]
+    );
+
+    if (results.length === 0) {
+      return false;
+    }
+
+    if (results[0].user_role !== "ADMIN") {
+      return false;
+    }
+
+    return true;
+  } catch (err: any) {
+    return false;
+  }
+};
+
 export default router;

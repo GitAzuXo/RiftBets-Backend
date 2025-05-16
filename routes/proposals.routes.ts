@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { db } from "../index";
 import { RowDataPacket } from "mysql2";
+import passport from "../auth/passport";
+import { requireAdmin } from "./auth.routes";
 
 const router = Router();
 
@@ -21,6 +23,59 @@ router.get("/getAll", (req, res) => {
     }).catch((err: Error) => {  
         return res.status(500).json({ message: "Database error", error: err.message });
     });
+});
+
+router.post("/finish", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    const { proposalId, result } = req.body;
+
+    if (!await requireAdmin(req)) {
+        res.status(403).json({ message: "Unauthorized: Admin access required" });
+    }
+
+    if (!proposalId || !["WIN", "LOSE"].includes(result)) {
+        res.status(400).json({ message: "Invalid input" });
+    }
+
+    try {
+        // Get proposal details
+        const [proposalRows] = await db.query<RowDataPacket[]>(
+            "SELECT * FROM proposals WHERE prop_id = ? AND prop_available = 1",
+            [proposalId]
+        );
+        if (proposalRows.length === 0) {
+            res.status(404).json({ message: "Proposal not found or already finished" });
+        }
+        const proposal = proposalRows[0];
+
+        const [betRows] = await db.query<RowDataPacket[]>(
+            "SELECT * FROM bet WHERE bet_proposal = ?",
+            [proposalId]
+        );
+
+        // Calculate payouts and update user balances
+        for (const bet of betRows) {
+            let payout = 0;
+            if (
+                (result === "WIN")
+            ) {
+                payout = bet.bet_amount * proposal.prop_odds;
+                await db.query(
+                    "UPDATE users SET user_balance = user_balance + ? WHERE user_id = ?",
+                    [payout, bet.bet_user]
+                );
+            }
+        }
+
+        // Mark proposal as finished
+        await db.query(
+            "UPDATE proposals SET prop_available = 0, prop_result = ? WHERE prop_id = ?",
+            [result, proposalId]
+        );
+
+        res.status(200).json({ message: "Proposal finished and payouts processed" });
+    } catch (err: any) {
+        res.status(500).json({ message: "Database error", error: err.message });
+    }
 });
 
 export default router;
