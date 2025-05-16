@@ -68,7 +68,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 
         // Mark proposal as finished
         await db.query(
-            "UPDATE proposals SET prop_available = 0, prop_result = ? WHERE prop_id = ?",
+            "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
             [result, proposalId]
         );
 
