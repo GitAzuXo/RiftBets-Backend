@@ -66,12 +66,12 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
                 );
 
                 await db.query(
-                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'WIN' WHERE bet_proposal = ?, bet_user = ?",
+                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'WIN' WHERE bet_proposal = ? AND bet_user = ?",
                     [proposalId, bet.bet_user]
                 );
             } else {
                 await db.query(
-                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'LOSE' WHERE bet_proposal = ?, bet_user = ?",
+                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'LOSE' WHERE bet_proposal = ? AND bet_user = ?",
                     [proposalId, bet.bet_user]
                 );
             }
