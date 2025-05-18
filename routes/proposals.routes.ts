@@ -14,6 +14,7 @@ router.get("/getAll", (req, res) => {
         COUNT(DISTINCT b.bet_user) AS prop_nbPeople
     FROM proposals p
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
+    WHERE p.prop_state != 'FINISHED'
     GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_state;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
         if (results.length === 0) {
