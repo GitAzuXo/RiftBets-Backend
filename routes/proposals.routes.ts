@@ -87,7 +87,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 });
 
 router.post("/create", passport.authenticate("jwt", { session: false }), async (req, res) => {
-    const { prop_player, prop_title, prop_odds } = req.body;
+    const { prop_player, prop_title, prop_odds, prop_champion } = req.body;
 
     if (!await requireAdmin(req)) {
         res.status(403).json({ message: "Unauthorized: Admin access required" });
@@ -99,9 +99,9 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
 
     try {
         const [result] = await db.query(
-            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_state)
-             VALUES (?, ?, ?, 'OPEN')`,
-            [prop_player, prop_title, prop_odds]
+            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_state, prop_champion)
+             VALUES (?, ?, ?, 'OPEN', ?)`,
+            [prop_player, prop_title, prop_odds, prop_champion]
         );
         res.status(201).json({ message: "Proposal created", proposalId: (result as any).insertId });
     } catch (err: any) {
