@@ -64,4 +64,21 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
     }
 });
 
+router.get("/last", async (req, res) => {
+    const sql = `
+        SELECT b.bet_amount, b.bet_proposal, b.bet_user, u.user_name, b.bet_creation
+        FROM bet b
+        JOIN user u ON b.bet_user = u.user_id
+        ORDER BY b.creation DESC
+        LIMIT 3
+    `;
+    try {
+        const [rows] = await db.query<RowDataPacket[]>(sql);
+        res.status(200).json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
 export default router;
