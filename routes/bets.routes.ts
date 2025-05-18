@@ -21,8 +21,19 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
     const sqlInsert = "INSERT INTO bet (bet_user, bet_proposal, bet_amount) VALUES (?, ?, ?)";
     const sqlUpdateBet = "UPDATE bet SET bet_amount = bet_amount + ? WHERE bet_id = ?";
     const sqlUpdateCoins = "UPDATE user SET user_coins = user_coins - ? WHERE user_name = ?";
+    const sqlProposalState = "SELECT prop_state FROM proposals WHERE prop_id = ?";
 
     try {
+        const [proposalRows] = await db.query<RowDataPacket[]>(sqlProposalState, [proposalId]);
+        if (proposalRows.length === 0) {
+            res.status(404).json({ message: "Proposal not found" });
+            return;
+        }
+        if (proposalRows[0].prop_state !== "OPEN") {
+            res.status(400).json({ message: "Proposal is not open for betting" });
+            return;
+        }
+
         const [rows] = await db.query<RowDataPacket[]>(sqlCheck, [username]);
 
         if (rows.length === 0) {
