@@ -38,7 +38,6 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
     }
 
     try {
-        // Get proposal details
         const [proposalRows] = await db.query<RowDataPacket[]>(
             "SELECT * FROM proposals WHERE prop_id = ? AND prop_available = 1",
             [proposalId]
@@ -53,7 +52,6 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
             [proposalId]
         );
 
-        // Calculate payouts and update user balances
         for (const bet of betRows) {
             let payout = 0;
             if (
@@ -83,6 +81,54 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
         );
 
         res.status(200).json({ message: "Proposal finished and payouts processed" });
+    } catch (err: any) {
+        res.status(500).json({ message: "Database error", error: err.message });
+    }
+});
+
+router.post("/create", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    const { prop_player, prop_title, prop_odds } = req.body;
+
+    if (!await requireAdmin(req)) {
+        res.status(403).json({ message: "Unauthorized: Admin access required" });
+    }
+
+    if (!prop_player || !prop_title || typeof prop_odds !== "number" || prop_odds <= 0) {
+        res.status(400).json({ message: "Invalid input" });
+    }
+
+    try {
+        const [result] = await db.query(
+            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_available)
+             VALUES (?, ?, ?, 1)`,
+            [prop_player, prop_title, prop_odds]
+        );
+        res.status(201).json({ message: "Proposal created", proposalId: (result as any).insertId });
+    } catch (err: any) {
+        res.status(500).json({ message: "Database error", error: err.message });
+    }
+});
+
+router.post("/close", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    const { proposalId } = req.body;
+
+    if (!await requireAdmin(req)) {
+        res.status(403).json({ message: "Unauthorized: Admin access required" });
+    }
+
+    if (!proposalId) {
+        res.status(400).json({ message: "Invalid input: proposalId required" });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
+            [proposalId]
+        );
+        if ((result as any).affectedRows === 0) {
+            res.status(404).json({ message: "Proposal not found or already unavailable" });
+        }
+        res.status(200).json({ message: "Proposal set to unavailable" });
     } catch (err: any) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
