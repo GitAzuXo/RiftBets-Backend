@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import passport from "../auth/passport";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { db } from "../index";

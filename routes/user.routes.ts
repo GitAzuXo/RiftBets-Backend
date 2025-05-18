@@ -186,4 +186,32 @@ router.post(
   }
 );
 
+
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        u.user_name, 
+        u.user_coins,
+        COUNT(b.bet_id) AS total_bets,
+        IFNULL(
+          ROUND(
+            (SUM(CASE WHEN b.bet_result = 'WIN' THEN 1 ELSE 0 END) / NULLIF(COUNT(b.bet_id), 0)) * 100, 
+            2
+          ), 
+          0
+        ) AS winrate
+      FROM user u
+      LEFT JOIN bet b ON b.bet_user = u.user_id
+      GROUP BY u.user_id, u.user_name, u.user_coins
+      ORDER BY u.user_coins DESC
+    `;
+    const [rows] = await db.query<RowDataPacket[]>(sql);
+    res.json(rows);
+  } catch (err) {
+    console.error("Leaderboard error:", err);
+    res.status(500).json({ message: "Database error" });
+  }
+});
+
 export default router;
