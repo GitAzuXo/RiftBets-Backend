@@ -14,7 +14,6 @@ router.get("/getAll", (req, res) => {
         COUNT(DISTINCT b.bet_user) AS prop_nbPeople
     FROM proposals p
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
-    WHERE p.prop_available = 1
     GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_available;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
         if (results.length === 0) {
@@ -125,11 +124,17 @@ router.post("/close", passport.authenticate("jwt", { session: false }), async (r
             "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
             [proposalId]
         );
-        res.status(201).json({ message: "Proposal closed with success" });
+
         if ((result as any).affectedRows === 0) {
             res.status(404).json({ message: "Proposal not found or already unavailable" });
         }
-        res.status(200).json({ message: "Proposal set to unavailable" });
+
+        await db.query(
+            "UPDATE bet SET bet_state = 'ONGOING' WHERE bet_proposal = ?",
+            [proposalId]
+        );
+
+        res.status(200).json({ message: "Proposal set to unavailable and bets set to ongoing" });
     } catch (err: any) {
         res.status(500).json({ message: "Database error", error: err.message });
     }
