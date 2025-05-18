@@ -21,7 +21,7 @@ router.post("/login", (req: Request, res: Response) => {
       if (!process.env.JWT_SECRET) {
         return res.status(500).json({ message: "JWT secret is not defined" });
       }
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
       return res.json({ message: "Login successful", token });
     })
@@ -33,14 +33,11 @@ router.post("/login", (req: Request, res: Response) => {
 router.post("/register", (req: Request, res: Response) => {
   const { username, password, balance = 0 } = req.body;
 
-  // Check if the username already exists
   db.query<RowDataPacket[]>("SELECT user_name FROM user WHERE user_name = ?", [username])
     .then(([results]: [RowDataPacket[], FieldPacket[]]) => {
       if (results.length > 0) {
-        // Pass an error message to Promise.reject()
         return Promise.reject(new Error("Username already exists"));
       }
-      // Proceed to insert the new user
       return db.query<ResultSetHeader>(
         "INSERT INTO user (user_name, user_password, user_coins) VALUES (?, ?, ?)",
         [username, password, balance]
@@ -54,22 +51,13 @@ router.post("/register", (req: Request, res: Response) => {
       if (!process.env.JWT_SECRET) {
         return Promise.reject(new Error("JWT secret is not defined"));
       }
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
-      // Send success response
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
       return res.status(201).json({ message: "User registered successfully", token });
     })
     .catch((err: Error) => {
-      // Handle errors and send response
       return res.status(500).json({ message: err.message || "Database error" });
     });
 });
-
-// Protected route example
-router.get("/protected", passport.authenticate("jwt", { session: false }),
-  (req: Request, res: Response) => {
-    res.json({ message: "You have accessed a protected route!", user: req.user });
-  }
-);
 
 export const requireAdmin = async (req: Request): Promise<boolean> => {
   try {
