@@ -205,6 +205,7 @@ router.get("/leaderboard", async (req, res) => {
       LEFT JOIN bet b ON b.bet_user = u.user_id
       WHERE u.user_name <> 'ADMIN'
       GROUP BY u.user_id, u.user_name, u.user_coins
+      HAVING total_bets >= 5
       ORDER BY u.user_coins DESC
     `;
     const [rows] = await db.query<RowDataPacket[]>(sql);
