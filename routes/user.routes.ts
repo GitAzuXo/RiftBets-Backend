@@ -191,16 +191,16 @@ router.get("/leaderboard", async (req, res) => {
   try {
     const sql = `
       SELECT 
-      u.user_name, 
-      u.user_coins,
-      COUNT(b.bet_id) AS total_bets,
-      IFNULL(
-        ROUND(
-        (SUM(CASE WHEN b.bet_result = 'WIN' THEN 1 ELSE 0 END) / NULLIF(COUNT(b.bet_id), 0)) * 100, 
-        2
-        ), 
-        0
-      ) AS winrate
+        u.user_name, 
+        u.user_coins,
+        COUNT(b.bet_id) AS total_bets,
+        IFNULL(
+          ROUND(
+            (SUM(CASE WHEN b.bet_result = 'WIN' AND b.bet_state = 'FINISHED' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN b.bet_state = 'FINISHED' THEN 1 ELSE 0 END), 0)) * 100, 
+            2
+          ), 
+          0
+        ) AS winrate
       FROM user u
       LEFT JOIN bet b ON b.bet_user = u.user_id
       WHERE u.user_name <> 'ADMIN'

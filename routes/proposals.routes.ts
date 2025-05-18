@@ -141,4 +141,57 @@ router.post("/close", passport.authenticate("jwt", { session: false }), async (r
     }
 });
 
+
+router.post("/cancel", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    const { proposalId } = req.body;
+
+    if (!await requireAdmin(req)) {
+        res.status(403).json({ message: "Unauthorized: Admin access required" });
+    }
+
+    if (!proposalId) {
+        res.status(400).json({ message: "Invalid input: proposalId required" });
+    }
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const [bets] = await connection.query<RowDataPacket[]>(
+            "SELECT bet_user, bet_amount FROM bet WHERE bet_proposal = ?",
+            [proposalId]
+        );
+
+        for (const bet of bets) {
+            await connection.query(
+                "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
+                [bet.bet_amount, bet.bet_user]
+            );
+        }
+
+        await connection.query(
+            "DELETE FROM bet WHERE bet_proposal = ?",
+            [proposalId]
+        );
+
+        const [result] = await connection.query(
+            "DELETE FROM proposals WHERE prop_id = ?",
+            [proposalId]
+        );
+
+        await connection.commit();
+
+        if ((result as any).affectedRows === 0) {
+            res.status(404).json({ message: "Proposal not found" });
+        }
+
+        res.status(200).json({ message: "Proposal cancelled, bets refunded and deleted" });
+    } catch (err: any) {
+        await connection.rollback();
+        res.status(500).json({ message: "Database error", error: err.message });
+    } finally {
+        connection.release();
+    }
+});
+
 export default router;
