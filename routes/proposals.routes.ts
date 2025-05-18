@@ -125,6 +125,7 @@ router.post("/close", passport.authenticate("jwt", { session: false }), async (r
             "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
             [proposalId]
         );
+        res.status(201).json({ message: "Proposal closed with success" });
         if ((result as any).affectedRows === 0) {
             res.status(404).json({ message: "Proposal not found or already unavailable" });
         }
