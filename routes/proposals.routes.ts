@@ -39,7 +39,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 
     try {
         const [proposalRows] = await db.query<RowDataPacket[]>(
-            "SELECT * FROM proposals WHERE prop_id = ? AND prop_state = 'OPEN'",
+            "SELECT * FROM proposals WHERE prop_id = ? AND prop_state != 'FINISHED'",
             [proposalId]
         );
         if (proposalRows.length === 0) {

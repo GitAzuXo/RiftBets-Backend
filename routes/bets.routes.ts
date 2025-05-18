@@ -69,7 +69,7 @@ router.get("/last", async (req, res) => {
         SELECT b.bet_amount, b.bet_proposal, b.bet_user, u.user_name, b.bet_creation
         FROM bet b
         JOIN user u ON b.bet_user = u.user_id
-        ORDER BY b.creation DESC
+        ORDER BY b.bet_creation DESC
         LIMIT 3
     `;
     try {
