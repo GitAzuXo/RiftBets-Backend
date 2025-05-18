@@ -66,9 +66,16 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
 
 router.get("/last", async (req, res) => {
     const sql = `
-        SELECT b.bet_amount, b.bet_proposal, b.bet_user, u.user_name, b.bet_creation
+        SELECT 
+            b.bet_amount, 
+            b.bet_proposal, 
+            b.bet_user, 
+            u.user_name, 
+            b.bet_creation,
+            p.* 
         FROM bet b
         JOIN user u ON b.bet_user = u.user_id
+        JOIN proposal p ON b.bet_proposal = p.proposal_id
         ORDER BY b.bet_creation DESC
         LIMIT 3
     `;
