@@ -14,7 +14,7 @@ router.get("/getAll", (req, res) => {
         COUNT(DISTINCT b.bet_user) AS prop_nbPeople
     FROM proposals p
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
-    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_available;`;
+    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_state;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
         if (results.length === 0) {
             return res.status(404).json({ message: "No proposals found" });
@@ -38,7 +38,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 
     try {
         const [proposalRows] = await db.query<RowDataPacket[]>(
-            "SELECT * FROM proposals WHERE prop_id = ? AND prop_available = 1",
+            "SELECT * FROM proposals WHERE prop_id = ? AND prop_state = 'OPEN'",
             [proposalId]
         );
         if (proposalRows.length === 0) {
@@ -75,7 +75,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
         }
 
         await db.query(
-            "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
+            "UPDATE proposals SET prop_state = 'FINISHED' WHERE prop_id = ?",
             [proposalId]
         );
 
@@ -98,8 +98,8 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
 
     try {
         const [result] = await db.query(
-            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_available)
-             VALUES (?, ?, ?, 1)`,
+            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_state)
+             VALUES (?, ?, ?, 'OPEN')`,
             [prop_player, prop_title, prop_odds]
         );
         res.status(201).json({ message: "Proposal created", proposalId: (result as any).insertId });
@@ -121,7 +121,7 @@ router.post("/close", passport.authenticate("jwt", { session: false }), async (r
 
     try {
         const [result] = await db.query(
-            "UPDATE proposals SET prop_available = 0 WHERE prop_id = ?",
+            "UPDATE proposals SET prop_state = 'CLOSED' WHERE prop_id = ?",
             [proposalId]
         );
 
