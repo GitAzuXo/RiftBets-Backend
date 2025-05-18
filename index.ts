@@ -6,6 +6,7 @@ import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import proposalsRoutes from "./routes/proposals.routes";
 import betsRoutes from "./routes/bets.routes";
+import codeRoutes from "./routes/codes.routes";
 import mysql from "mysql2/promise";
 
 import { Request, Response } from "express";
@@ -35,6 +36,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/proposals", proposalsRoutes);
 app.use("/api/bets", betsRoutes);
+app.use("/api/codes", codeRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Bienvenue sur l'API !");
