@@ -15,9 +15,70 @@ export async function fetchAndStorePuuid(name: string, tagline: string) {
     const response = await axios.get(url, { headers });
     const puuid = response.data.puuid;
 
-    return puuid;
+    try {
+      const surl = "https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/" + puuid;
+      const rep = await axios.get(surl, { headers });
+      const suuid = rep.data.id;
+      const level = rep.data.summonerLevel;
+      const icon = rep.data.profileIconId;
+
+      return {puuid, suuid, level, icon};
+    } catch (error) {
+      console.error('Error fetching or storing SUUID:', error);
+      throw error;
+    }
+
   } catch (error) {
     console.error('Error fetching or storing PUUID:', error);
+    throw error;
+  }
+
+}
+
+export async function getMatchesStats(puuid: string) {
+  try {
+    const url = "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?type=ranked&start=0&count=20";
+    const response = await axios.get(url, { headers });
+    const matchIds: string[] = response.data;
+
+    let totalKills = 0;
+    let totalDeaths = 0;
+    let totalAssists = 0;
+    let totalCS = 0;
+    let totalMinutes = 0;
+    let wins = 0;
+    let gamesAnalyzed = 0;
+
+    for (const matchId of matchIds) {
+      const matchUrl = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+      const matchRes = await axios.get(matchUrl, { headers });
+      const matchData = matchRes.data;
+
+      const participant = matchData.info.participants.find((p: any) => p.puuid === puuid);
+      if (!participant) continue;
+
+      totalKills += participant.kills;
+      totalDeaths += participant.deaths;
+      totalAssists += participant.assists;
+      totalCS += participant.totalMinionsKilled + participant.neutralMinionsKilled;
+      totalMinutes += matchData.info.gameDuration / 60;
+      if (participant.win) wins += 1;
+      gamesAnalyzed += 1;
+    }
+
+    const avgKDA = gamesAnalyzed > 0 ? (totalKills + totalAssists) / Math.max(1, totalDeaths) : 0;
+    const avgCSPerMin = totalMinutes > 0 ? totalCS / totalMinutes : 0;
+    const winrate = gamesAnalyzed > 0 ? (wins / gamesAnalyzed) * 100 : 0;
+
+    return {
+      avgKDA,
+      avgCSPerMin,
+      winrate,
+      gamesAnalyzed
+    };
+
+  } catch (error) {
+    console.error('Error fetching or calculating match stats:', error);
     throw error;
   }
 }

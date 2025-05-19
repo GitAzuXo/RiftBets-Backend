@@ -15,7 +15,7 @@ router.get("/getAll", (req, res) => {
     FROM proposals p
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
     WHERE p.prop_state != 'FINISHED'
-    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds, p.prop_creation, p.prop_state;`;
+    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds_win, p.prop_odds_lose, p.prop_creation, p.prop_state;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
         if (results.length === 0) {
             return res.status(404).json({ message: "No proposals found" });
@@ -54,15 +54,14 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 
         for (const bet of betRows) {
             let payout = 0;
-            if (
-                (result === "WIN")
-            ) {
-                payout = bet.bet_amount * proposal.prop_odds;
+            if (bet.bet_side === result) {
+                // Use the correct odds depending on the side
+                const odds = bet.bet_side === "WIN" ? proposal.prop_odds_win : proposal.prop_odds_lose;
+                payout = bet.bet_amount * odds;
                 await db.query(
                     "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
                     [payout, bet.bet_user]
                 );
-
                 await db.query(
                     "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'WIN' WHERE bet_proposal = ? AND bet_user = ?",
                     [proposalId, bet.bet_user]
@@ -87,21 +86,21 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
 });
 
 router.post("/create", passport.authenticate("jwt", { session: false }), async (req, res) => {
-    const { prop_player, prop_title, prop_odds, prop_champion } = req.body;
+    const { prop_player, prop_champion } = req.body;
 
     if (!await requireAdmin(req)) {
         res.status(403).json({ message: "Unauthorized: Admin access required" });
     }
 
-    if (!prop_player || !prop_title || typeof prop_odds !== "number" || prop_odds <= 0) {
+    if (!prop_player || !prop_champion) {
         res.status(400).json({ message: "Invalid input" });
     }
 
     try {
         const [result] = await db.query(
-            `INSERT INTO proposals (prop_player, prop_title, prop_odds, prop_state, prop_champion)
-             VALUES (?, ?, ?, 'OPEN', ?)`,
-            [prop_player, prop_title, prop_odds, prop_champion]
+            `INSERT INTO proposals (prop_player, prop_title, prop_odds_win, prop_odds_lose, prop_state, prop_champion)
+             VALUES (?, ?, ?, ?, 'OPEN', ?)`,
+            [prop_player, "Gagne sa partie", 2.00, 2.00, prop_champion]
         );
         res.status(201).json({ message: "Proposal created", proposalId: (result as any).insertId });
     } catch (err: any) {
