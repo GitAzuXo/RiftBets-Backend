@@ -2,6 +2,7 @@ import { Router } from "express";
 import passport from "passport";
 import { db } from "../index";
 import { RowDataPacket } from "mysql2";
+import { requireAdmin } from "./auth.routes";
 
 const router = Router();
 
@@ -52,5 +53,36 @@ router.post("/use", passport.authenticate("jwt", { session: false }), async (req
     }
 });
 
+router.post("/add", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    const { code_string, code_reward } = req.body;
+
+    if (!await requireAdmin(req)) {
+            res.status(403).json({ message: "Unauthorized: Admin access required" });
+        }
+
+    if (!code_string || typeof code_reward !== "number") {
+        res.status(400).json({ message: "Code string and reward are required." });
+        return;
+    }
+
+    try {
+        const [existing] = await db.query<RowDataPacket[]>(
+            "SELECT * FROM codes WHERE code_string = ?",
+            [code_string]
+        );
+        if (existing.length > 0) {
+            res.status(409).json({ message: "Code already exists." });
+            return;
+        }
+
+        await db.query(
+            "INSERT INTO codes (code_string, code_reward, code_state) VALUES (?, ?, 'AVAILABLE')",
+            [code_string, code_reward]
+        );
+        res.status(201).json({ message: "Code added successfully." });
+    } catch (err) {
+        res.status(500).json({ message: "Server error.", error: err });
+    }
+});
 
 export default router;
