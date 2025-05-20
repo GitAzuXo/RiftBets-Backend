@@ -81,7 +81,8 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
         const amountonvictory = result1[0][0].total_bet || 0;
         const amountondefeat = result2[0][0].total_bet || 0;
         let gamma = 0.1;
-        if (amountonvictory >= 50 || amountondefeat >= 50) {gamma = 0.3;}
+        if (amountonvictory >= 50 || amountondefeat >= 50) {gamma = 0.2;}
+        else if (amountonvictory >= 100 || amountondefeat >= 100) {gamma = 0.3;}
         const winquote = 2 - gamma * (amountonvictory - amountondefeat) / (amountonvictory + amountondefeat);
         const losequote = 4 - winquote;
         await db.query(updateWinning, [winquote, proposalId]);
