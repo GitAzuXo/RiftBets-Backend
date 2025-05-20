@@ -88,23 +88,26 @@ export async function fetchCurrentMatch(puuid: string) {
   try {
     const url = "https://euw1.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/" + puuid;
     const response = await axios.get(url, { headers });
-    if(response.data.gameQueueConfigId === "420") {
+    if (response.data.gameQueueConfigId === 420) {
       for (let player of response.data.participants) {
         if (player.puuid === puuid) {
           return {
             champion: player.championId,
-            time: response.data.gameStartTime
+            time: response.data.gameStartTime,
+            id: response.data.matchId
           };
         }
       }
-      return {error: "Player not found in the current match"};
+      return { error: "Player not found in the current match" };
     }
-
-  } catch (error) {
+    return { error: "Currently not in a match" };
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return { error: "Currently not in a match" };
+    }
     console.error('Error fetching current match:', error);
     throw error;
   }
-
 }
 
 export async function getRankedStats(puuid: string) {

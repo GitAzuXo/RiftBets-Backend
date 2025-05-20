@@ -15,7 +15,7 @@ router.get("/getAll", (req, res) => {
     FROM proposals p
     LEFT JOIN bet b ON p.prop_id = b.bet_proposal
     WHERE p.prop_state != 'FINISHED'
-    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds_win, p.prop_odds_lose, p.prop_creation, p.prop_state;`;
+    GROUP BY p.prop_id, p.prop_player, p.prop_title, p.prop_odds_win, p.prop_odds_lose, p.prop_creation, p.prop_state, p.prop_matchid, p.prop_matchstart;`;
     db.query<RowDataPacket[]>(sql).then(([results]) => {
         if (results.length === 0) {
             return res.status(404).json({ message: "No proposals found" });
@@ -190,5 +190,25 @@ router.post("/cancel", passport.authenticate("jwt", { session: false }), async (
         connection.release();
     }
 });
+
+export async function openAutoProposal(prop_player: number, prop_champion: number, prop_matchid: number, prop_matchstart: number) {
+    const sql = `
+        SELECT champion_name 
+        FROM champions 
+        WHERE champion_id = ?
+    `;
+    const [rows] = await db.query<RowDataPacket[]>(sql, [prop_champion]);
+    const championName = rows.length > 0 ? rows[0].champion_name : null;
+    try {
+        const [result] = await db.query(
+            `INSERT INTO proposals (prop_player, prop_title, prop_odds_win, prop_odds_lose, prop_state, prop_champion, prop_matchid, prop_matchstart)
+             VALUES (?, 'Gagne sa partie', ?, ?, 'OPEN', ?, ?, ?)`,
+            [prop_player, 2.00, 2.00, championName, prop_matchid, prop_matchstart]
+        );
+        return "Proposal created";
+    } catch (err: any) {
+        return "Database error: " + err.message;
+    }
+}
 
 export default router;

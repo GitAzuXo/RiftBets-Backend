@@ -5,6 +5,8 @@ import { requireAdmin } from "./auth.routes";
 import express from "express";
 import { fetchAndStorePuuid } from "../riot_watcher/riot_watcher";
 import { getMatchesStats } from "../riot_watcher/riot_watcher";
+import { fetchCurrentMatch } from "../riot_watcher/riot_watcher";
+import { openAutoProposal } from "./proposals.routes";
 
 const router = express.Router();
 
@@ -77,5 +79,42 @@ router.post("/matchdata", passport.authenticate("jwt", { session: false }), asyn
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+async function proposalExists(gameId: string): Promise<boolean> {
+    const [rows] = await db.query<RowDataPacket[]>(
+        "SELECT 1 FROM proposals WHERE prop_matchid = ? LIMIT 1",
+        [gameId]
+    );
+    return rows.length > 0;
+}
+
+export async function autoCreateProposals() {
+    const [users] = await db.query<RowDataPacket[]>(
+        "SELECT riot_user, riot_puuid FROM riotdata WHERE riot_puuid IS NOT NULL"
+    );
+
+    let proposalsCreated = 0;
+
+    for (const user of users) {
+        const puuid = user.riot_puuid;
+        const userId = user.riot_user;
+
+        const currentGame = await fetchCurrentMatch(puuid);
+
+        if (currentGame && currentGame.id) {
+            const gameId = currentGame.id.toString();
+            const champion = currentGame.champion;
+            const gameTime = currentGame.time;
+
+            const exists = await proposalExists(gameId);
+            if (!exists) {
+                await openAutoProposal(userId, champion, gameId, gameTime);
+                proposalsCreated++;
+            }
+        }
+    }
+
+    console.log(`[autoCreateProposals] ${proposalsCreated} proposals created.`);
+}
 
 export default router;

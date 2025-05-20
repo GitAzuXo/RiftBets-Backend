@@ -9,6 +9,7 @@ import betsRoutes from "./routes/bets.routes";
 import codeRoutes from "./routes/codes.routes";
 import riotRoutes from "./routes/riot.routes";
 import mysql from "mysql2/promise";
+import { autoCreateProposals } from "./routes/riot.routes";
 
 import { Request, Response } from "express";
 
@@ -53,3 +54,12 @@ app.listen(PORT, () => {
         console.error("Erreur de connexion à la base de données :", err);
     });
 });
+
+setInterval(async () => {
+    try {
+        await autoCreateProposals();
+        console.log("Checked for soloq matches.");
+    } catch (err) {
+        console.error("Error in autoCreateProposals:", err);
+    }
+}, 24 * 1000);
