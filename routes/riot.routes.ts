@@ -80,14 +80,6 @@ router.post("/matchdata", passport.authenticate("jwt", { session: false }), asyn
     }
 });
 
-async function proposalExists(gameId: string): Promise<boolean> {
-    const [rows] = await db.query<RowDataPacket[]>(
-        "SELECT 1 FROM proposals WHERE prop_matchid = ? LIMIT 1",
-        [gameId]
-    );
-    return rows.length > 0;
-}
-
 export async function autoCreateProposals() {
     const [users] = await db.query<RowDataPacket[]>(
         "SELECT riot_user, riot_puuid FROM riotdata WHERE riot_puuid IS NOT NULL"
@@ -102,14 +94,19 @@ export async function autoCreateProposals() {
         const currentGame = await fetchCurrentMatch(puuid);
 
         if (currentGame && currentGame.id) {
-            const gameId = currentGame.id.toString();
+            const gameId = currentGame.id;
             const champion = currentGame.champion;
             const gameTime = currentGame.time;
-
-            const exists = await proposalExists(gameId);
+            const [proposalRows] = await db.query<RowDataPacket[]>(
+                "SELECT 1 FROM proposals WHERE prop_matchid = ? LIMIT 1",
+                [gameId]
+            );
+            const exists = proposalRows.length > 0;
             if (!exists) {
                 await openAutoProposal(userId, champion, gameId, gameTime);
                 proposalsCreated++;
+            } else {
+                console.log(`Proposal already exists for gameId=${gameId}, skipping creation.`);
             }
         }
     }

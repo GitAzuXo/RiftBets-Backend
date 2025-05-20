@@ -12,6 +12,7 @@ import mysql from "mysql2/promise";
 import { autoCreateProposals } from "./routes/riot.routes";
 
 import { Request, Response } from "express";
+import { fetchCurrentMatch } from "./riot_watcher/riot_watcher";
 
 dotenv.config();
 

@@ -89,18 +89,19 @@ export async function fetchCurrentMatch(puuid: string) {
     const url = "https://euw1.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/" + puuid;
     const response = await axios.get(url, { headers });
     if (response.data.gameQueueConfigId === 420) {
+      console.log("Player is in a ranked match");
       for (let player of response.data.participants) {
         if (player.puuid === puuid) {
           return {
             champion: player.championId,
             time: response.data.gameStartTime,
-            id: response.data.matchId
+            id: response.data.gameId
           };
         }
       }
       return { error: "Player not found in the current match" };
     }
-    return { error: "Currently not in a match" };
+    return { error: "Currently not in a ranked solo/duo match" };
   } catch (error: any) {
     if (error.response && error.response.status === 404) {
       return { error: "Currently not in a match" };

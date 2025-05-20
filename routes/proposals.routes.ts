@@ -77,6 +77,17 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
             [proposalId]
         );
 
+        const [userRows] = await db.query<RowDataPacket[]>(
+            "SELECT user_id FROM user WHERE user_name = ?",
+            [proposal.prop_player]
+        );
+        if (userRows.length > 0) {
+            await db.query(
+                "UPDATE user SET user_coins = user_coins + 1 WHERE user_id = ?",
+                [userRows[0].user_id]
+            );
+        }
+
         res.status(200).json({ message: "Proposal finished and payouts processed" });
     } catch (err: any) {
         res.status(500).json({ message: "Database error", error: err.message });
@@ -197,13 +208,16 @@ export async function openAutoProposal(prop_player: number, prop_champion: numbe
         FROM champions 
         WHERE champion_id = ?
     `;
+    const sql2 = "SELECT user_name FROM user WHERE user_id = ?";
     const [rows] = await db.query<RowDataPacket[]>(sql, [prop_champion]);
     const championName = rows.length > 0 ? rows[0].champion_name : null;
+    const [rows2] = await db.query<RowDataPacket[]>(sql2, [prop_player]);
+    const playerName = rows2.length > 0 ? rows2[0].user_name : null;
     try {
         const [result] = await db.query(
             `INSERT INTO proposals (prop_player, prop_title, prop_odds_win, prop_odds_lose, prop_state, prop_champion, prop_matchid, prop_matchstart)
              VALUES (?, 'Gagne sa partie', ?, ?, 'OPEN', ?, ?, ?)`,
-            [prop_player, 2.00, 2.00, championName, prop_matchid, prop_matchstart]
+            [playerName, 2.00, 2.00, championName, prop_matchid, prop_matchstart]
         );
         return "Proposal created";
     } catch (err: any) {
