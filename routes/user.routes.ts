@@ -34,8 +34,7 @@ router.get(
       SUM(CASE WHEN b.bet_result = 'win' THEN 1 ELSE 0 END) AS total_wins,
       CASE
         WHEN lb.bet_id IS NULL THEN 'No Bet'
-        WHEN lb.bet_result = 'win' AND lb.bet_side = 'Win' THEN CONCAT('+', lb.bet_amount * (p.prop_odds_win - 1))
-        WHEN lb.bet_result = 'win' AND lb.bet_side = 'Lose' THEN CONCAT('+', lb.bet_amount * (p.prop_odds_lose - 1))
+        WHEN lb.bet_result = 'WIN' THEN CONCAT('+', lb.bet_amount * (lb.bet_odd - 1))
         WHEN lb.bet_result = 'lose' THEN CONCAT('-', lb.bet_amount)
         ELSE 'No Bet'
       END AS last_bet_gain_or_loss
@@ -53,7 +52,7 @@ router.get(
       LEFT JOIN proposals p ON p.prop_id = lb.bet_proposal
       WHERE u.user_name = ?
       GROUP BY u.user_id, u.user_name, u.user_role, u.user_coins, u.user_creation,
-           lb.bet_id, lb.bet_result, lb.bet_amount, lb.bet_side, p.prop_odds_win, p.prop_odds_lose
+           lb.bet_id, lb.bet_result, lb.bet_amount, lb.bet_side, lb.bet_odd, p.prop_odds_win, p.prop_odds_lose
     `;
 
     db.query<RowDataPacket[]>(sql, [username, username])
@@ -99,13 +98,9 @@ router.get(
     const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
     const sql = `
       SELECT 
-        b.*, 
-        p.*, 
-        CASE 
-        WHEN b.bet_side = 'WIN' THEN (b.bet_amount * p.prop_odds_win)
-        WHEN b.bet_side = 'LOSE' THEN (b.bet_amount * p.prop_odds_lose)
-        ELSE 0
-        END AS potential_gain
+      b.*, 
+      p.*, 
+      (b.bet_amount * b.bet_odd) AS potential_gain
       FROM bet b
       JOIN proposals p ON b.bet_proposal = p.prop_id
       WHERE b.bet_user = ?;
