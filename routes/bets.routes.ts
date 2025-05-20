@@ -21,7 +21,7 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
     const sqlInsert = "INSERT INTO bet (bet_user, bet_proposal, bet_amount, bet_side, bet_odd) VALUES (?, ?, ?, ?, ?)";
     const sqlUpdateBet = "UPDATE bet SET bet_amount = bet_amount + ? WHERE bet_id = ?";
     const sqlUpdateCoins = "UPDATE user SET user_coins = user_coins - ? WHERE user_name = ?";
-    const sqlProposalState = "SELECT prop_state FROM proposals WHERE prop_id = ?";
+    const sqlProposalState = "SELECT prop_state, prop_odds_win, prop_odds_lose FROM proposals WHERE prop_id = ?";
     const sqlTotalBetOnProposalWin = "SELECT SUM(bet_amount) AS total_bet FROM bet WHERE bet_proposal = ? AND bet_side = 'WIN'";
     const sqlTotalBetOnProposalLose = "SELECT SUM(bet_amount) AS total_bet FROM bet WHERE bet_proposal = ? AND bet_side = 'LOSE'";
     const updateWinning = "UPDATE proposals SET prop_odds_win = ? WHERE prop_id = ?";
