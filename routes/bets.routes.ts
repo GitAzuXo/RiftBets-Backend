@@ -18,7 +18,7 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
     const sqlCheck = "SELECT user_coins FROM user WHERE user_name = ?";
     const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
     const sqlBetCheck = "SELECT bet_id, bet_amount FROM bet WHERE bet_user = ? AND bet_proposal = ?";
-    const sqlInsert = "INSERT INTO bet (bet_user, bet_proposal, bet_amount, bet_side) VALUES (?, ?, ?, ?)";
+    const sqlInsert = "INSERT INTO bet (bet_user, bet_proposal, bet_amount, bet_side, bet_odd) VALUES (?, ?, ?, ?, ?)";
     const sqlUpdateBet = "UPDATE bet SET bet_amount = bet_amount + ? WHERE bet_id = ?";
     const sqlUpdateCoins = "UPDATE user SET user_coins = user_coins - ? WHERE user_name = ?";
     const sqlProposalState = "SELECT prop_state FROM proposals WHERE prop_id = ?";
@@ -67,7 +67,11 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
             const betId = betRows[0].bet_id;
             await db.query(sqlUpdateBet, [betAmount, betId]);
         } else {
-            await db.query(sqlInsert, [userId, proposalId, betAmount, betSide]);
+            if (betSide == 'WIN') {
+                await db.query(sqlInsert, [userId, proposalId, betAmount, betSide, proposalRows[0].prop_odds_win]);
+            } else {
+                await db.query(sqlInsert, [userId, proposalId, betAmount, betSide, proposalRows[0].prop_odds_lose]);
+            }
         }
 
         await db.query(sqlUpdateCoins, [betAmount, username]);

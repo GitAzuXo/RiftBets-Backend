@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { error } from 'console';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -92,12 +93,11 @@ export async function fetchCurrentMatch(puuid: string) {
         if (player.puuid === puuid) {
           return {
             champion: player.championId,
+            time: response.data.gameStartTime
           };
         }
       }
-      return {
-        champion: response.data.participants[0].championId,
-      };
+      return {error: "Player not found in the current match"};
     }
 
   } catch (error) {

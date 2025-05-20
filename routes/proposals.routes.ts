@@ -55,9 +55,7 @@ router.post("/finish", passport.authenticate("jwt", { session: false }), async (
         for (const bet of betRows) {
             let payout = 0;
             if (bet.bet_side === result) {
-                // Use the correct odds depending on the side
-                const odds = bet.bet_side === "WIN" ? proposal.prop_odds_win : proposal.prop_odds_lose;
-                payout = bet.bet_amount * odds;
+                payout = bet.bet_amount * bet.bet_odd;
                 await db.query(
                     "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
                     [payout, bet.bet_user]
