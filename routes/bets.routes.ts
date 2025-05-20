@@ -99,6 +99,8 @@ router.get("/last", async (req, res) => {
             b.bet_amount, 
             b.bet_proposal, 
             b.bet_user, 
+            b.bet_side,
+            b.bet_odd,
             u.user_name, 
             b.bet_creation,
             p.* 
