@@ -90,8 +90,15 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
         let gamma = 0.1;
         if (amountonvictory >= 50 || amountondefeat >= 50) {gamma = 0.2;}
         else if (amountonvictory >= 100 || amountondefeat >= 100) {gamma = 0.3;}
-        const winquote = 2 - gamma * (amountonvictory - amountondefeat) / (amountonvictory + amountondefeat);
-        const losequote = 4 - winquote;
+        let winquote: number;
+        let losequote: number;
+        if (amountonvictory + amountondefeat === 0) {
+            winquote = 2;
+            losequote = 2;
+        } else {
+            winquote = 2 - gamma * (amountonvictory - amountondefeat) / (amountonvictory + amountondefeat);
+            losequote = 4 - winquote;
+        }
         await db.query(updateWinning, [winquote, proposalId]);
         await db.query(updateLosing, [losequote, proposalId]);
         res.status(200).json({ message: "Bet placed successfully" });
