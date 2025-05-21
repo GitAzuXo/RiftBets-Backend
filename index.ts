@@ -10,9 +10,8 @@ import codeRoutes from "./routes/codes.routes";
 import riotRoutes from "./routes/riot.routes";
 import mysql from "mysql2/promise";
 import { autoCreateProposals } from "./routes/riot.routes";
-
+import { autoFinishProposals } from "./riot_watcher/riot_watcher";
 import { Request, Response } from "express";
-import { fetchCurrentMatch } from "./riot_watcher/riot_watcher";
 
 dotenv.config();
 
@@ -64,3 +63,12 @@ setInterval(async () => {
         console.error("Error in autoCreateProposals:", err);
     }
 }, 24 * 1000);
+
+setInterval(async () => {
+    try {
+        await autoFinishProposals();
+        console.log("Checked for soloq finished.");
+    } catch (err) {
+        console.error("Error in autoFinishProposals:", err);
+    }
+}, 30 * 1000);

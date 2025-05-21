@@ -173,7 +173,7 @@ router.post(
 
       const sqlUpdate = `
         UPDATE user
-        SET user_coins = user_coins + 5, user_daily = true, user_dailytime = ?
+        SET user_coins = user_coins + 10, user_daily = true, user_dailytime = ?
         WHERE user_name = ?
       `;
 
