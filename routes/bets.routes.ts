@@ -63,7 +63,7 @@ router.post("/bet", passport.authenticate("jwt", { session: false }), async (req
         const [betRows] = await db.query<RowDataPacket[]>(sqlBetCheck, [userId, proposalId]);
 
         if (betRows.length > 0) {
-            if (betRows[0].bet_side === betSide) {
+            if (betRows[0].bet_side === betSide || betRows[1].bet_side === betSide) {
                 res.status(400).json({ message: "You have already placed a bet on this side for this proposal." });
                 return;
             } else {

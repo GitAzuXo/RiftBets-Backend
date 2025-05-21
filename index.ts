@@ -71,4 +71,4 @@ setInterval(async () => {
     } catch (err) {
         console.error("Error in autoFinishProposals:", err);
     }
-}, 30 * 1000);
+}, 45 * 1000);
