@@ -12,6 +12,8 @@ const router = express.Router();
 
 router.post("/create", passport.authenticate("jwt", { session: false }), async (req, res) => {
     const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
+    const sqlCheck = "SELECT riot_puuid FROM riotdata WHERE riot_user = ?";
+    const sqlGift = "UPDATE user SET user_coins = user_coins + 20 WHERE user_id = ?";
     try {
         const { name, tagline } = req.body;
         if (!tagline || !name) {
@@ -42,9 +44,16 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
         const userId = rows1[0].user_id;
         const riottagline = name + "#" + tagline;
 
+        const alreadyLinked = db.query<RowDataPacket[]>(sqlCheck, [userId]);
+        if (!alreadyLinked) {
+            await db.execute(sqlGift, [userId]);
+            res.json({ message: "Thank you for linking your account", icon: summonerDatas.icon, level: summonerDatas.level });
+            return;
+        }
+
         await db.execute("INSERT INTO riotdata (riot_user, riot_tagline, riot_puuid, riot_suuid, riot_level, riot_icon) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE riot_user = VALUES(riot_user), riot_tagline = VALUES(riot_tagline), riot_puuid = VALUES(riot_puuid), riot_suuid = VALUES(riot_suuid), riot_level = VALUES(riot_level), riot_icon = VALUES(riot_icon);",[userId, riottagline, summonerDatas.puuid, summonerDatas.suuid, summonerDatas.level, summonerDatas.icon]);
 
-        res.json({ message: "Riot data created successfully" });
+        res.json({ message: "Account updated successfully", icon: summonerDatas.icon, level: summonerDatas.level });
     } catch (error) {
         res.status(500).json({ error: "Internal server error" });
     }
