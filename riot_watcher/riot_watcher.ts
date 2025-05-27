@@ -97,7 +97,7 @@ export async function fetchCurrentMatch(puuid: string) {
             champion: player.championId,
             time: response.data.gameStartTime,
             id: response.data.gameId,
-            team: response.data.teamId
+            team: player.teamId
           };
         }
       }
@@ -153,7 +153,7 @@ export async function autoFinishProposals() {
   });
 
   for (const option of options) {
-    if (option.bo_title !== 'issue de la partie') continue;
+    if (option.bo_title !== "Parier sur l'issue de la partie") continue;
 
     // Get all users in the game from useringame table
     const usersInGame = await db.user_in_match.findMany({
@@ -188,6 +188,11 @@ export async function autoFinishProposals() {
         const win = participant.win;
         let result = 1;
         if (!win) result = 0;
+
+        await db.game.update({
+          where: { game_id: option.bo_game },
+          data: { game_result: result, game_state: 'FINISHED' }
+        });
 
         const bets = await db.bet.findMany({
           where: { bet_bo: option.bo_id, bet_user: userInGame.user_name }

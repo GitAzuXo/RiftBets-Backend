@@ -49,7 +49,7 @@ app.listen(PORT, async () => {
     }
 });
 
-/**setInterval(async () => {
+setInterval(async () => {
     try {
         await autoCreateProposals();
         console.log("Checked for soloq matches.");
@@ -65,4 +65,4 @@ setInterval(async () => {
     } catch (err) {
         console.error("Error in autoFinishProposals:", err);
     }
-}, 45 * 1000);**/
+}, 45 * 1000);

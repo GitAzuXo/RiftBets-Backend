@@ -51,7 +51,7 @@ model user_in_match {
 
 model bet_option {
   bo_id    Int     @id @default(autoincrement())
-  bo_game  Int
+  bo_game  BigInt
   bo_title String  @db.VarChar(150)
   bo_state String  @default("OPEN") @db.VarChar(50)
 
