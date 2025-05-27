@@ -41,7 +41,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
     console.log(`Game ${riotGameId} created.`);
   }
 
-  await db.userInMatch.upsert({
+  await db.user_in_match.upsert({
     where: {
       user_name_game_id: {
         user_name,
@@ -61,7 +61,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
   });
 
   // 4. Check how many users are in this game and on the same team
-  const teammates = await db.userInMatch.findMany({
+  const teammates = await db.user_in_match.findMany({
     where: {
       game_id: riotGameId,
       player_team: teamId
@@ -72,7 +72,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
     console.log(`DUOQ detected in game ${riotGameId} for team ${teamId}:`, teammates.map(t => t.user_name));
   }
 
-  let betOption = await db.betOption.findFirst({
+  let betOption = await db.bet_option.findFirst({
     where: {
       bo_game: riotGameId,
       bo_title: "Parier sur l'issue de la partie"
@@ -80,7 +80,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
   });
 
   if (!betOption) {
-    betOption = await db.betOption.create({
+    betOption = await db.bet_option.create({
       data: {
         bo_game: riotGameId,
         bo_title: "Parier sur l'issue de la partie",
@@ -88,7 +88,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
       }
     });
 
-    await db.gameOdd.create({
+    await db.game_odd.create({
       data: {
         game_id: riotGameId,
         odd_bo: betOption.bo_id,

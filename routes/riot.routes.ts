@@ -31,7 +31,7 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
         const riottagline = name + "#" + tagline;
 
         // Check if already linked
-        const alreadyLinked = await db.riotData.findUnique({
+        const alreadyLinked = await db.riot_data.findUnique({
             where: { rd_user: username }
         });
 
@@ -41,7 +41,7 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
                 data: { user_balance: { increment: 20 } }
             });
             // Insert new riot_data
-            await db.riotData.create({
+            await db.riot_data.create({
                 data: {
                     rd_user: username,
                     rd_tagline: riottagline,
@@ -56,7 +56,7 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
         }
 
         // Update riot_data if already exists
-        await db.riotData.update({
+        await db.riot_data.update({
             where: { rd_user: username },
             data: {
                 rd_tagline: riottagline,
@@ -104,7 +104,7 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
 });**/
 
 export async function autoCreateProposals() {
-    const users = await db.riotData.findMany({
+    const users = await db.riot_data.findMany({
         where: {
             rd_puuid: {
                 not: undefined
@@ -131,7 +131,7 @@ export async function autoCreateProposals() {
             const teamId = currentGame.team;
 
             // Check if proposal already exists
-            const exists = await db.betOption.findFirst({
+            const exists = await db.bet_option.findFirst({
                 where: { bo_game: gameId },
                 select: { bo_id: true }
             });

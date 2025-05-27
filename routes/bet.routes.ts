@@ -33,7 +33,7 @@ router.post(
                 return;
             }
 
-            const betoption = await db.betOption.findUnique({
+            const betoption = await db.bet_option.findUnique({
                 where: { bo_id: optionId },
             });
             if (!betoption) {
@@ -68,7 +68,7 @@ router.post(
             }
 
             // Get odds from game_odds table
-            const gameOdds = await db.gameOdd.findUnique({
+            const gameOdds = await db.game_odd.findUnique({
                 where: { game_id_odd_bo: { game_id: betoption.bo_game, odd_bo: betoption.bo_id } },
             });
             if (!gameOdds) {
@@ -139,7 +139,7 @@ router.post(
             }
 
             // Update proposal odds
-            await db.gameOdd.update({
+            await db.game_odd.update({
                 where: { game_id_odd_bo: { game_id: betoption.bo_game, odd_bo: betoption.bo_id } },
                 data: {
                     odd_win: winquote,

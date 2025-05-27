@@ -7,71 +7,71 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model user {
   user_name     String    @id @db.VarChar(150)
   user_password String    @db.VarChar(255)
   user_balance       Decimal   @default(0.00) @db.Decimal(10, 2)
   user_role     String    @default("USER") @db.VarChar(20)
   user_daily    DateTime @default(now()) @updatedAt
 
-  bets          Bet[]
-  riot_data     RiotData?
-  userInMatches UserInMatch[]
+  bets          bet[]
+  riot_data     riot_data?
+  userInMatches user_in_match[]
 }
 
-model Game {
+model game {
   game_id     Int         @id @default(autoincrement())
   game_state  GameState
   game_start  BigInt
   game_result Int
 
-  userInMatches UserInMatch[]
-  gameOdds      GameOdd[]
+  userInMatches user_in_match[]
+  gameOdds      game_odd[]
 }
 
-model Champion {
+model champion {
   champion_id   Int          @id
   champion_name String       @db.VarChar(100)
 
-  userInMatches UserInMatch[]
+  userInMatches user_in_match[]
 }
 
-model UserInMatch {
+model user_in_match {
   user_name       String
   game_id         Int
   player_team     Int
   player_champion Int
 
-  user     User     @relation(fields: [user_name], references: [user_name])
-  game     Game     @relation(fields: [game_id], references: [game_id])
-  champion Champion @relation(fields: [player_champion], references: [champion_id])
+  user     user     @relation(fields: [user_name], references: [user_name])
+  game     game     @relation(fields: [game_id], references: [game_id])
+  champion champion @relation(fields: [player_champion], references: [champion_id])
 
   @@id([user_name, game_id])
 }
 
-model BetOption {
+model bet_option {
   bo_id    Int     @id @default(autoincrement())
   bo_game  Int
   bo_title String  @db.VarChar(150)
   bo_state String  @default("OPEN") @db.VarChar(50)
 
-  bets     Bet[]
-  gameOdds GameOdd[]
+  bets     bet[]
+  gameOdds game_odd[]
 }
 
-model GameOdd {
+model game_odd {
   game_id  Int
   odd_bo   Int
   odd_win  Decimal @db.Decimal(4, 2)
   odd_lose Decimal @db.Decimal(4, 2)
 
-  game     Game     @relation(fields: [game_id], references: [game_id])
-  betOption BetOption @relation(fields: [odd_bo], references: [bo_id])
+  game     game     @relation(fields: [game_id], references: [game_id])
+  betOption bet_option @relation(fields: [odd_bo], references: [bo_id])
 
   @@id([game_id, odd_bo])
 }
 
-model Bet {
+model bet {
   bet_id       Int      @id @default(autoincrement())
   bet_user     String
   bet_bo       Int
@@ -81,11 +81,11 @@ model Bet {
   bet_odd      Decimal  @db.Decimal(4, 2)
   bet_timestamp DateTime @default(now()) @updatedAt
 
-  user       User      @relation(fields: [bet_user], references: [user_name])
-  betOption  BetOption @relation(fields: [bet_bo], references: [bo_id])
+  user       user      @relation(fields: [bet_user], references: [user_name])
+  betOption  bet_option @relation(fields: [bet_bo], references: [bo_id])
 }
 
-model RiotData {
+model riot_data {
   rd_user    String   @id
   rd_tagline String   @db.VarChar(200)
   rd_puuid   String   @db.VarChar(350)
@@ -93,7 +93,7 @@ model RiotData {
   rd_level   Int
   rd_icon    Int
 
-  user       User     @relation(fields: [rd_user], references: [user_name])
+  user       user     @relation(fields: [rd_user], references: [user_name])
 }
 
 enum GameState {

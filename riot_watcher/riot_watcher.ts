@@ -142,7 +142,7 @@ export async function getRankedStats(puuid: string) {
 
 export async function autoFinishProposals() {
   // Get all proposals that are not finished
-  const options = await db.betOption.findMany({
+  const options = await db.bet_option.findMany({
     where: { bo_state: { not: 'FINISHED' } },
     select: {
       bo_id: true,
@@ -156,7 +156,7 @@ export async function autoFinishProposals() {
     if (option.bo_title !== 'issue de la partie') continue;
 
     // Get all users in the game from useringame table
-    const usersInGame = await db.userInMatch.findMany({
+    const usersInGame = await db.user_in_match.findMany({
       where: { game_id: option.bo_game },
       select: { user_name: true }
     });
@@ -165,7 +165,7 @@ export async function autoFinishProposals() {
     // For each user in the game
     for (const userInGame of usersInGame) {
       // Get puuid from riotdata
-      const riotData = await db.riotData.findFirst({
+      const riotData = await db.riot_data.findFirst({
         where: { rd_user: userInGame.user_name },
         select: { rd_puuid: true }
       });
@@ -213,7 +213,7 @@ export async function autoFinishProposals() {
         }
 
         // Mark proposal as finished for this user
-        await db.betOption.update({
+        await db.bet_option.update({
           where: { bo_id: option.bo_id },
           data: { bo_state: 'FINISHED' }
         });
