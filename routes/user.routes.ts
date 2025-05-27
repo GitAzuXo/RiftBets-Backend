@@ -57,9 +57,11 @@ router.get(
 
       let icon = null;
       let level = null;
+      let tag = null;
       if (user.riot_data) {
         icon = user.riot_data.rd_icon ?? null;
         level = user.riot_data.rd_level ?? null;
+        tag = user.riot_data.rd_tagline ?? null;
       }
 
       res.json({
@@ -71,7 +73,8 @@ router.get(
         lastBetGainOrLoss,
         icon,
         level,
-        daily: user.user_daily
+        daily: user.user_daily,
+        tag
       });
     } catch (err: any) {
       res.status(500).json({ message: "Database error", error: err.message });

@@ -20,7 +20,7 @@ model user {
 }
 
 model game {
-  game_id     Int         @id @default(autoincrement())
+  game_id     BigInt         @id
   game_state  GameState
   game_start  BigInt
   game_result Int
@@ -38,7 +38,7 @@ model champion {
 
 model user_in_match {
   user_name       String
-  game_id         Int
+  game_id         BigInt
   player_team     Int
   player_champion Int
 
@@ -60,7 +60,7 @@ model bet_option {
 }
 
 model game_odd {
-  game_id  Int
+  game_id  BigInt
   odd_bo   Int
   odd_win  Decimal @db.Decimal(4, 2)
   odd_lose Decimal @db.Decimal(4, 2)

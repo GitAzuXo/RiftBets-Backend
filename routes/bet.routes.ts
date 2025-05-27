@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { db } from "../index";
-import { RowDataPacket } from "mysql2";
 import passport from "../auth/passport";
-import { PrismaClient } from "@prisma/client";
 
 const router = Router();
 

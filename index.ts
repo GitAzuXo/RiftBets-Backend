@@ -8,6 +8,7 @@ import proposalsRoutes from "./routes/game.routes";
 import betRoutes from "./routes/bet.routes";
 import codeRoutes from "./routes/codes.routes";
 import riotRoutes from "./routes/riot.routes";
+import betOptionRoutes from "./routes/betoption.routes";
 import { PrismaClient } from "@prisma/client";
 import { autoCreateProposals } from "./routes/riot.routes";
 import { autoFinishProposals } from "./riot_watcher/riot_watcher";
@@ -30,6 +31,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/option", proposalsRoutes);
 app.use("/api/bet", betRoutes);
+app.use("/api/betoption", betOptionRoutes);
 //app.use("/api/codes", codeRoutes);
 app.use("/api/riot", riotRoutes);
 
@@ -47,7 +49,7 @@ app.listen(PORT, async () => {
     }
 });
 
-setInterval(async () => {
+/**setInterval(async () => {
     try {
         await autoCreateProposals();
         console.log("Checked for soloq matches.");
@@ -63,4 +65,4 @@ setInterval(async () => {
     } catch (err) {
         console.error("Error in autoFinishProposals:", err);
     }
-}, 45 * 1000);
+}, 45 * 1000);**/
