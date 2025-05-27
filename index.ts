@@ -28,7 +28,7 @@ app.use(passport.initialize());
 
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/proposal", proposalsRoutes);
+app.use("/api/option", proposalsRoutes);
 app.use("/api/bet", betRoutes);
 //app.use("/api/codes", codeRoutes);
 app.use("/api/riot", riotRoutes);
