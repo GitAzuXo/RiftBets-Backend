@@ -70,7 +70,8 @@ router.get(
         totalWins,
         lastBetGainOrLoss,
         icon,
-        level
+        level,
+        daily: user.user_daily
       });
     } catch (err: any) {
       res.status(500).json({ message: "Database error", error: err.message });
@@ -121,7 +122,7 @@ router.get(
 );
 
 
-router.get("/getAll", async (req, res) => {
+/**router.get("/getAll", async (req, res) => {
   try {
     const users = await db.user.findMany();
     res.json(users);
@@ -129,7 +130,7 @@ router.get("/getAll", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Database error" });
   }
-});
+});**/
 
 router.post(
   "/dailyReward",
