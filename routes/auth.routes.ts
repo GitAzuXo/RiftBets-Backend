@@ -2,60 +2,67 @@ import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { db } from "../index";
-import { RowDataPacket, ResultSetHeader, FieldPacket } from "mysql2";
 
 const router = Router();
 dotenv.config();
 
-router.post("/login", (req: Request, res: Response) => {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  db.query<RowDataPacket[]>("SELECT user_name FROM user WHERE user_name = ? AND user_password = ?", [username, password])
-    .then(([results]: [any[], any]) => {
-      if (results.length === 0) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      const user = results[0];
-      const payload = { username: user.user_name };
-      if (!process.env.JWT_SECRET) {
-        return res.status(500).json({ message: "JWT secret is not defined" });
-      }
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
-      return res.json({ message: "Login successful", token });
-    })
-    .catch((err: Error) => {
-      return res.status(500).json({ message: "Database error", error: err.message });
+  try {
+    const user = await db.user.findUnique({
+      where: { user_name: username, user_password: password },
+      select: { user_name: true }
     });
+
+    if (!user) {
+      res.status(401).json({ message: "Invalid credentials" });
+      return;
+    }
+
+    const payload = { username: user.user_name };
+    if (!process.env.JWT_SECRET) {
+      res.status(500).json({ message: "JWT secret is not defined" });
+    }
+    const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: "1d" });
+
+    res.json({ message: "Login successful", token });
+  } catch (err: any) {
+    res.status(500).json({ message: "Database error", error: err.message });
+  }
 });
 
-router.post("/register", (req: Request, res: Response) => {
+router.post("/register", async (req: Request, res: Response) => {
   const { username, password, balance = 0 } = req.body;
 
-  db.query<RowDataPacket[]>("SELECT user_name FROM user WHERE user_name = ?", [username])
-    .then(([results]: [RowDataPacket[], FieldPacket[]]) => {
-      if (results.length > 0) {
-        return Promise.reject(new Error("Username already exists"));
-      }
-      return db.query<ResultSetHeader>(
-        "INSERT INTO user (user_name, user_password, user_coins) VALUES (?, ?, ?)",
-        [username, password, balance]
-      );
-    })
-    .then(([results]: [ResultSetHeader, FieldPacket[]]) => {
-      if (results.affectedRows === 0) {
-        return Promise.reject(new Error("Registration failed"));
-      }
-      const payload = { username: username };
-      if (!process.env.JWT_SECRET) {
-        return Promise.reject(new Error("JWT secret is not defined"));
-      }
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
-      return res.status(201).json({ message: "User registered successfully", token });
-    })
-    .catch((err: Error) => {
-      return res.status(500).json({ message: err.message || "Database error" });
+  try {
+    const existingUser = await db.user.findUnique({
+      where: { user_name: username }
     });
+
+    if (existingUser) {
+      res.status(400).json({ message: "Username already exists" });
+    }
+
+    const newUser = await db.user.create({
+      data: {
+        user_name: username,
+        user_password: password,
+        user_balance: balance
+      }
+    });
+
+    if (!process.env.JWT_SECRET) {
+      res.status(500).json({ message: "JWT secret is not defined" });
+    }
+
+    const payload = { username: newUser.user_name };
+    const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: "1d" });
+
+    res.status(201).json({ message: "User registered successfully", token });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || "Database error" });
+  }
 });
 
 export const requireAdmin = async (req: Request): Promise<boolean> => {
@@ -65,21 +72,17 @@ export const requireAdmin = async (req: Request): Promise<boolean> => {
       return false;
     }
 
-    const [results]: [RowDataPacket[], FieldPacket[]] = await db.query<RowDataPacket[]>(
-      "SELECT user_role FROM user WHERE user_name = ?",
-      [user.username]
-    );
+    const foundUser = await db.user.findUnique({
+      where: { user_name: user.username },
+      select: { user_role: true }
+    });
 
-    if (results.length === 0) {
+    if (!foundUser) {
       return false;
     }
 
-    if (results[0].user_role !== "ADMIN") {
-      return false;
-    }
-
-    return true;
-  } catch (err: any) {
+    return foundUser.user_role === "ADMIN";
+  } catch {
     return false;
   }
 };

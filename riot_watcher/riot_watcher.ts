@@ -1,8 +1,6 @@
 import axios from 'axios';
-import { error } from 'console';
 import dotenv from 'dotenv';
 import { db } from '../index';
-import { RowDataPacket } from 'mysql2';
 
 
 dotenv.config();
@@ -98,7 +96,8 @@ export async function fetchCurrentMatch(puuid: string) {
           return {
             champion: player.championId,
             time: response.data.gameStartTime,
-            id: response.data.gameId
+            id: response.data.gameId,
+            team: response.data.teamId
           };
         }
       }
@@ -142,92 +141,93 @@ export async function getRankedStats(puuid: string) {
 }
 
 export async function autoFinishProposals() {
-  const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
-
-  const [proposals] = await db.query<RowDataPacket[]>(
-    "SELECT prop_id, prop_matchid, prop_player FROM proposals WHERE prop_state != 'FINISHED'"
-  );
-
-  for (const proposal of proposals) {
-    const [rows1] = await db.query<RowDataPacket[]>(sqlId, [proposal.prop_player]);
-
-    if (rows1.length === 0) {
-        return "Id not found";
+  // Get all proposals that are not finished
+  const options = await db.betOption.findMany({
+    where: { bo_state: { not: 'FINISHED' } },
+    select: {
+      bo_id: true,
+      bo_game: true,
+      bo_state: true,
+      bo_title: true
     }
+  });
 
-    const userId = rows1[0].user_id;
-    const [riotRows] = await db.query<RowDataPacket[]>(
-      "SELECT riot_puuid FROM riotdata WHERE riot_user = ?",
-      [userId]
-    );
-    if (riotRows.length === 0) continue;
-    const puuid = riotRows[0].riot_puuid;
+  for (const option of options) {
+    if (option.bo_title !== 'issue de la partie') continue;
 
-    const currentGame = await fetchCurrentMatch(puuid);
-    if (currentGame && currentGame.id == proposal.prop_matchid) {
-      continue;
-    }
+    // Get all users in the game from useringame table
+    const usersInGame = await db.userInMatch.findMany({
+      where: { game_id: option.bo_game },
+      select: { user_name: true }
+    });
+    if (!usersInGame || usersInGame.length === 0) continue;
 
-    try {
-      const matchid = "EUW1_" + proposal.prop_matchid;
-      const matchUrl = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchid}`;
-      const matchRes = await axios.get(matchUrl, { headers });
-      const matchData = matchRes.data;
-      const participant = matchData.info.participants.find((p: any) => p.puuid === puuid);
-      if (!participant) continue;
-      const win = participant.win;
-      let result = 'WIN'
-      if (!win) {result = 'LOSE'}
+    // For each user in the game
+    for (const userInGame of usersInGame) {
+      // Get puuid from riotdata
+      const riotData = await db.riotData.findFirst({
+        where: { rd_user: userInGame.user_name },
+        select: { rd_puuid: true }
+      });
+      if (!riotData) continue;
+      const puuid = riotData.rd_puuid;
+
+      // Check if player is still in the match
+      const currentGame = await fetchCurrentMatch(puuid);
+      if (currentGame && currentGame.id == option.bo_game) {
+        continue;
+      }
 
       try {
+        const matchid = "EUW1_" + option.bo_game;
+        const matchUrl = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchid}`;
+        const matchRes = await axios.get(matchUrl, { headers });
+        const matchData = matchRes.data;
+        const participant = matchData.info.participants.find((p: any) => p.puuid === puuid);
+        if (!participant) continue;
+        const win = participant.win;
+        let result = 1;
+        if (!win) result = 0;
 
-        const [betRows] = await db.query<RowDataPacket[]>(
-            "SELECT * FROM bet WHERE bet_proposal = ?",
-            [proposal.prop_id]
-        );
+        const bets = await db.bet.findMany({
+          where: { bet_bo: option.bo_id, bet_user: userInGame.user_name }
+        });
 
-        for (const bet of betRows) {
-            let payout = 0;
-            if (bet.bet_side === result) {
-                payout = bet.bet_amount * bet.bet_odd;
-                await db.query(
-                    "UPDATE user SET user_coins = user_coins + ? WHERE user_id = ?",
-                    [payout, bet.bet_user]
-                );
-                await db.query(
-                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'WIN' WHERE bet_proposal = ? AND bet_user = ?",
-                    [proposal.prop_id, bet.bet_user]
-                );
-            } else {
-                await db.query(
-                    "UPDATE bet SET bet_state = 'FINISHED', bet_result = 'LOSE' WHERE bet_proposal = ? AND bet_user = ?",
-                    [proposal.prop_id, bet.bet_user]
-                );
-            }
+        for (const bet of bets) {
+          if (bet.bet_side === result) {
+            const payout = Number(bet.bet_amount) * Number(bet.bet_odd);
+            await db.user.update({
+              where: { user_name: bet.bet_user },
+              data: { user_balance: { increment: payout } }
+            });
+            await db.bet.updateMany({
+              where: { bet_bo: option.bo_id, bet_user: bet.bet_user },
+              data: { bet_state: 'WON' }
+            });
+          } else {
+            await db.bet.updateMany({
+              where: { bet_bo: option.bo_id, bet_user: bet.bet_user },
+              data: { bet_state: 'LOST' }
+            });
+          }
         }
 
-        await db.query(
-            "UPDATE proposals SET prop_state = 'FINISHED' WHERE prop_id = ?",
-            [proposal.prop_id]
-        );
+        // Mark proposal as finished for this user
+        await db.betOption.update({
+          where: { bo_id: option.bo_id },
+          data: { bo_state: 'FINISHED' }
+        });
 
-        const [userRows] = await db.query<RowDataPacket[]>(
-            "SELECT user_id FROM user WHERE user_name = ?",
-            [proposal.prop_player]
-        );
-        if (userRows.length > 0) {
-            await db.query(
-                "UPDATE user SET user_coins = user_coins + 1 WHERE user_id = ?",
-                [userRows[0].user_id]
-            );
-        }
+        // Give 1 coin to the user
+        await db.user.update({
+          where: { user_name: userInGame.user_name },
+          data: { user_balance: { increment: 1 } }
+        });
 
-      console.log(`Proposal ${proposal.prop_id} finished with result: ${win ? 'WIN' : 'LOSE'}`);
+        console.log(`Proposal ${option.bo_id} for user ${userInGame.user_name} finished with result: ${win ? 'WIN' : 'LOSE'}`);
       } catch (err) {
-        console.error("Error fetching match result:", err);
+        console.error("Error fetching match data:", err);
       }
-    } catch (err) {
-      console.error("Error fetching match data:", err);
     }
   }
 }

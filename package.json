@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/client": "^6.8.2",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -17,7 +18,8 @@
     "express": "^5.1.0",
     "mysql2": "^3.14.1",
     "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1"
+    "passport-jwt": "^4.0.1",
+    "prisma": "^6.8.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",

@@ -1,19 +1,14 @@
 import passport from "passport";
 import { db } from "../index";
-import { RowDataPacket } from "mysql2";
-import { requireAdmin } from "./auth.routes";
 import express from "express";
 import { fetchAndStorePuuid } from "../riot_watcher/riot_watcher";
 import { getMatchesStats } from "../riot_watcher/riot_watcher";
 import { fetchCurrentMatch } from "../riot_watcher/riot_watcher";
-import { openAutoProposal } from "./proposals.routes";
+import { openOrJoinGame } from "./game.routes";
 
 const router = express.Router();
 
 router.post("/create", passport.authenticate("jwt", { session: false }), async (req, res) => {
-    const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
-    const sqlCheck = "SELECT riot_puuid FROM riotdata WHERE riot_user = ?";
-    const sqlGift = "UPDATE user SET user_coins = user_coins + 20 WHERE user_id = ?";
     try {
         const { name, tagline } = req.body;
         if (!tagline || !name) {
@@ -33,25 +28,44 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
         }
 
         const username = (req.user as { username: string }).username;
-
-        const [rows1] = await db.query<RowDataPacket[]>(sqlId, [username]);
-
-        if (rows1.length === 0) {
-            res.status(404).json({ message: "Id not found" });
-            return;
-        }
-
-        const userId = rows1[0].user_id;
         const riottagline = name + "#" + tagline;
 
-        const alreadyLinked = db.query<RowDataPacket[]>(sqlCheck, [userId]);
+        // Check if already linked
+        const alreadyLinked = await db.riotData.findUnique({
+            where: { rd_user: username }
+        });
+
         if (!alreadyLinked) {
-            await db.execute(sqlGift, [userId]);
+            await db.user.update({
+                where: { user_name: username },
+                data: { user_balance: { increment: 20 } }
+            });
+            // Insert new riot_data
+            await db.riotData.create({
+                data: {
+                    rd_user: username,
+                    rd_tagline: riottagline,
+                    rd_puuid: summonerDatas.puuid,
+                    rd_suuid: summonerDatas.suuid,
+                    rd_level: summonerDatas.level,
+                    rd_icon: summonerDatas.icon
+                }
+            });
             res.json({ message: "Thank you for linking your account", icon: summonerDatas.icon, level: summonerDatas.level });
             return;
         }
 
-        await db.execute("INSERT INTO riotdata (riot_user, riot_tagline, riot_puuid, riot_suuid, riot_level, riot_icon) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE riot_user = VALUES(riot_user), riot_tagline = VALUES(riot_tagline), riot_puuid = VALUES(riot_puuid), riot_suuid = VALUES(riot_suuid), riot_level = VALUES(riot_level), riot_icon = VALUES(riot_icon);",[userId, riottagline, summonerDatas.puuid, summonerDatas.suuid, summonerDatas.level, summonerDatas.icon]);
+        // Update riot_data if already exists
+        await db.riotData.update({
+            where: { rd_user: username },
+            data: {
+                rd_tagline: riottagline,
+                rd_puuid: summonerDatas.puuid,
+                rd_suuid: summonerDatas.suuid,
+                rd_level: summonerDatas.level,
+                rd_icon: summonerDatas.icon
+            }
+        });
 
         res.json({ message: "Account updated successfully", icon: summonerDatas.icon, level: summonerDatas.level });
     } catch (error) {
@@ -59,7 +73,7 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
     }
 });
 
-router.post("/matchdata", passport.authenticate("jwt", { session: false }), async (req, res) => {
+/**router.post("/matchdata", passport.authenticate("jwt", { session: false }), async (req, res) => {
     const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
     try {
         const { puuid } = req.body;
@@ -87,18 +101,26 @@ router.post("/matchdata", passport.authenticate("jwt", { session: false }), asyn
     } catch (error) {
         res.status(500).json({ error: "Internal server error" });
     }
-});
+});**/
 
 export async function autoCreateProposals() {
-    const [users] = await db.query<RowDataPacket[]>(
-        "SELECT riot_user, riot_puuid FROM riotdata WHERE riot_puuid IS NOT NULL"
-    );
+    const users = await db.riotData.findMany({
+        where: {
+            rd_puuid: {
+                not: undefined
+            }
+        },
+        select: {
+            rd_user: true,
+            rd_puuid: true
+        }
+    });
 
     let proposalsCreated = 0;
 
     for (const user of users) {
-        const puuid = user.riot_puuid;
-        const userId = user.riot_user;
+        const puuid = user.rd_puuid;
+        const username = user.rd_user;
 
         const currentGame = await fetchCurrentMatch(puuid);
 
@@ -106,13 +128,16 @@ export async function autoCreateProposals() {
             const gameId = currentGame.id;
             const champion = currentGame.champion;
             const gameTime = currentGame.time;
-            const [proposalRows] = await db.query<RowDataPacket[]>(
-                "SELECT 1 FROM proposals WHERE prop_matchid = ? LIMIT 1",
-                [gameId]
-            );
-            const exists = proposalRows.length > 0;
+            const teamId = currentGame.team;
+
+            // Check if proposal already exists
+            const exists = await db.betOption.findFirst({
+                where: { bo_game: gameId },
+                select: { bo_id: true }
+            });
+
             if (!exists) {
-                await openAutoProposal(userId, champion, gameId, gameTime);
+                await openOrJoinGame(username, gameId, teamId, champion, BigInt(gameTime));
                 proposalsCreated++;
             } else {
                 console.log(`Proposal already exists for gameId=${gameId}, skipping creation.`);
