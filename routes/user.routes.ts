@@ -45,8 +45,9 @@ router.get(
       });
 
       let lastBetGainOrLoss = "No Bet";
-      const lastBet = user.bets[0];
-      if (lastBet) {
+      let lastBet = null;
+      if (user.bets && user.bets.length > 0) {
+        lastBet = user.bets[0];
         if (lastBet.bet_state === "WON") {
           lastBetGainOrLoss = `+${Number(lastBet.bet_amount) * (Number(lastBet.bet_odd) - 1)}`;
         } else if (lastBet.bet_state === "LOST") {

@@ -20,7 +20,7 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const payload = { username: user.user_name };
+    const payload = { username: username };
     if (!process.env.JWT_SECRET) {
       res.status(500).json({ message: "JWT secret is not defined" });
     }
@@ -56,7 +56,7 @@ router.post("/register", async (req: Request, res: Response) => {
       res.status(500).json({ message: "JWT secret is not defined" });
     }
 
-    const payload = { username: newUser.user_name };
+    const payload = { username: username };
     const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: "1d" });
 
     res.status(201).json({ message: "User registered successfully", token });
