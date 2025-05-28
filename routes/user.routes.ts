@@ -58,10 +58,18 @@ router.get(
       let icon = null;
       let level = null;
       let tag = null;
+      let elo = null;
+      let div = null;
+      let tagline = null;
+      let lp = null;
       if (user.riot_data) {
         icon = user.riot_data.rd_icon ?? null;
         level = user.riot_data.rd_level ?? null;
         tag = user.riot_data.rd_tagline ?? null;
+        elo = user.riot_data.rd_elo ?? null;
+        div = user.riot_data.rd_div ?? null;
+        tagline = user.riot_data.rd_tagline;
+        lp = user.riot_data.rd_lp ?? null;
       }
 
       res.json({
@@ -74,7 +82,11 @@ router.get(
         icon,
         level,
         daily: user.user_daily,
-        tag
+        tag,
+        elo,
+        div,
+        lp,
+        tagline,
       });
     } catch (err: any) {
       res.status(500).json({ message: "Database error", error: err.message });
