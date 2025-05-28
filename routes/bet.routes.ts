@@ -154,34 +154,17 @@ router.post(
     }
 );
 
-router.get("/last", async (req, res) => {
-    try {
-        const bets = await db.bet.findMany({
-            orderBy: { bet_timestamp: "desc" },
-            take: 3,
-            include: {
-                user: true,
-                betOption: true,
-            },
-        });
-
-        // Map to match the original SQL output structure
-        const result = bets.map(bet => ({
-            bet_amount: bet.bet_amount,
-            bet_option: bet.betOption,
-            bet_user: bet.bet_user,
-            bet_side: bet.bet_side,
-            bet_odd: bet.bet_odd,
-            user_name: bet.user?.user_name,
-            bet_creation: bet.bet_timestamp,
-            ...bet.betOption
-        }));
-
-        res.status(200).json(result);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Database error" });
+router.get(
+    "/last",
+    async (req, res) => {
+        try {
+            const lastBets = await db.$queryRaw`SELECT * FROM view_last_3_bets_with_players`;
+            res.status(200).json(lastBets);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: "Database error" });
+        }
     }
-});
+);
 
 export default router;
