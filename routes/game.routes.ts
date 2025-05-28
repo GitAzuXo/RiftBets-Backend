@@ -17,22 +17,28 @@ router.get("/ongoing", async (_req, res) => {
           where: { game_id: game.game_id },
         });
 
-        // For each user, fetch their riot_data where rd_user === user_name
+        // For each user, fetch their riot_data and champion_name
         const serializedUsers = await Promise.all(users.map(async user => {
-          const riotData = await db.riot_data.findUnique({
-            where: { rd_user: user.user_name },
-            select: {
-              rd_tagline: true,
-              rd_level: true,
-              rd_icon: true,
-              rd_winrate: true,
-              rd_kda: true,
-              rd_csm: true,
-              rd_elo: true,
-              rd_div: true,
-              rd_lp: true
-            }
-          });
+          const [riotData, champion] = await Promise.all([
+            db.riot_data.findUnique({
+              where: { rd_user: user.user_name },
+              select: {
+                rd_tagline: true,
+                rd_level: true,
+                rd_icon: true,
+                rd_winrate: true,
+                rd_kda: true,
+                rd_csm: true,
+                rd_elo: true,
+                rd_div: true,
+                rd_lp: true
+              }
+            }),
+            db.champion.findUnique({
+              where: { champion_id: user.player_champion },
+              select: { champion_name: true }
+            })
+          ]);
 
           const serializedUser: any = {};
           for (const key in user) {
@@ -40,6 +46,7 @@ router.get("/ongoing", async (_req, res) => {
             serializedUser[key] = typeof value === "bigint" ? value.toString() : value;
           }
           serializedUser.riot_data = riotData;
+          serializedUser.champion_name = champion?.champion_name || null;
           return serializedUser;
         }));
 
