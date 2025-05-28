@@ -4,15 +4,63 @@ import { Prisma } from "@prisma/client";
 
 const router = Router();
 
-router.get("/available", async (req, res) => {
-    try {
-        const games = await db.game.findMany({
-            where: { game_state: "ONGOING" }
+router.get("/ongoing", async (_req, res) => {
+  try {
+    const ongoingGames = await db.game.findMany({
+      where: { game_state: "ONGOING" }
+    });
+
+    // For each ongoing game, fetch its users in match and join riot_data where rd_user matches user_name
+    const gamesWithUsers = await Promise.all(
+      ongoingGames.map(async (game) => {
+        const users = await db.user_in_match.findMany({
+          where: { game_id: game.game_id },
         });
-        res.status(200).json({ games });
-    } catch (err: any) {
-        res.status(500).json({ message: "Database error", error: err.message });
-    }
+
+        // For each user, fetch their riot_data where rd_user === user_name
+        const serializedUsers = await Promise.all(users.map(async user => {
+          const riotData = await db.riot_data.findUnique({
+            where: { rd_user: user.user_name },
+            select: {
+              rd_tagline: true,
+              rd_level: true,
+              rd_icon: true,
+              rd_winrate: true,
+              rd_kda: true,
+              rd_csm: true,
+              rd_elo: true,
+              rd_div: true
+            }
+          });
+
+          const serializedUser: any = {};
+          for (const key in user) {
+            const value = (user as any)[key];
+            serializedUser[key] = typeof value === "bigint" ? value.toString() : value;
+          }
+          serializedUser.riot_data = riotData;
+          return serializedUser;
+        }));
+
+        // Serialize bigint fields in game
+        const serializedGame: any = {};
+        for (const key in game) {
+          const value = (game as any)[key];
+          serializedGame[key] = typeof value === "bigint" ? value.toString() : value;
+        }
+
+        return {
+          ...serializedGame,
+          users_in_match: serializedUsers
+        };
+      })
+    );
+
+    res.json(gamesWithUsers);
+  } catch (error) {
+    console.error("Error fetching ongoing games:", error);
+    res.status(500).json({ error: "Failed to fetch ongoing games." });
+  }
 });
 
 /**

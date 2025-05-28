@@ -5,6 +5,7 @@ import { fetchAndStorePuuid } from "../riot_watcher/riot_watcher";
 import { getMatchesStats } from "../riot_watcher/riot_watcher";
 import { fetchCurrentMatch } from "../riot_watcher/riot_watcher";
 import { openOrJoinGame } from "./game.routes";
+import { getRankedStats } from "../riot_watcher/riot_watcher";
 
 const router = express.Router();
 
@@ -137,6 +138,7 @@ export async function autoCreateProposals() {
             });
 
             if (!exists) {
+                await getRankedStats(puuid);
                 await openOrJoinGame(username, gameId, teamId, champion, BigInt(gameTime));
                 proposalsCreated++;
             } else {

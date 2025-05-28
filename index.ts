@@ -29,7 +29,7 @@ app.use(passport.initialize());
 
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/option", proposalsRoutes);
+app.use("/api/game", proposalsRoutes);
 app.use("/api/bet", betRoutes);
 app.use("/api/betoption", betOptionRoutes);
 //app.use("/api/codes", codeRoutes);

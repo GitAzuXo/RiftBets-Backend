@@ -72,12 +72,22 @@ export async function getMatchesStats(puuid: string) {
     const avgCSPerMin = totalMinutes > 0 ? totalCS / totalMinutes : 0;
     const winrate = gamesAnalyzed > 0 ? (wins / gamesAnalyzed) * 100 : 0;
 
-    return {
-      avgKDA,
-      avgCSPerMin,
-      winrate,
-      gamesAnalyzed
-    };
+    const rankedurl = "https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/" + puuid;
+    const responseranked = await axios.get(rankedurl, { headers });
+    const rankedData = responseranked.data.find((entry: any) => entry.queueType === "RANKED_SOLO_5x5");
+
+    await db.riot_data.updateMany({
+      where: { rd_puuid: puuid },
+      data: {
+      rd_kda: avgKDA,
+      rd_csm: avgCSPerMin,
+      rd_winrate: winrate,
+      rd_elo: rankedData ? rankedData.tier : "UNRANKED",
+      rd_div: rankedData ? rankedData.rank : null
+      }
+    });
+
+    return;
 
   } catch (error) {
     console.error('Error fetching or calculating match stats:', error);
