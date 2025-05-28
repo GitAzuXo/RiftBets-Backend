@@ -81,7 +81,7 @@ router.post(
                     bet_user: user.user_name,
                     bet_bo: optionId,
                     bet_amount: betAmount,
-                    bet_side: betSide,
+                    bet_side: betsidenb,
                     bet_odd:
                         betSide === "WIN"
                             ? gameOdds.odd_win
