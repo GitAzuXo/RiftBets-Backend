@@ -49,11 +49,12 @@ router.post(
             }
 
             // Check if user already bet on this side for this proposal
+            let betsidenb = betSide === "WIN" ? 1 : 0;
             const existingBet = await db.bet.findFirst({
                 where: {
                     bet_user: user.user_name,
                     bet_bo: optionId,
-                    bet_side: betSide,
+                    bet_side: betsidenb,
                 },
             });
             if (existingBet) {
