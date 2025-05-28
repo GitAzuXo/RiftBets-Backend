@@ -97,6 +97,7 @@ model riot_data {
   rd_csm   Decimal? @db.Decimal(4, 1)
   rd_elo   String?  @db.VarChar(20)
   rd_div String?  @db.VarChar(10)
+  rd_lp  Int?
 
   user       user     @relation(fields: [rd_user], references: [user_name])
 }

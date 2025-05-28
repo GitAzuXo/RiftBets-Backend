@@ -83,7 +83,8 @@ export async function getMatchesStats(puuid: string) {
       rd_csm: avgCSPerMin,
       rd_winrate: winrate,
       rd_elo: rankedData ? rankedData.tier : "UNRANKED",
-      rd_div: rankedData ? rankedData.rank : null
+      rd_div: rankedData ? rankedData.rank : null,
+      rd_lp: rankedData ? rankedData.leaguePoints : null,
       }
     });
 
@@ -119,33 +120,6 @@ export async function fetchCurrentMatch(puuid: string) {
       return { error: "Currently not in a match" };
     }
     console.error('Error fetching current match:', error);
-    throw error;
-  }
-}
-
-export async function getRankedStats(puuid: string) {
-  try {
-    const url = "https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/" + puuid;
-    const response = await axios.get(url, { headers });
-    const rankedData = response.data[0];
-
-    if (!rankedData) {
-      throw new Error('Ranked data not found');
-    }
-
-    let winrate = rankedData.wins + rankedData.losses > 0 ? (rankedData.wins / (rankedData.wins + rankedData.losses)) * 100 : 0;
-
-    return {
-      tier: rankedData.tier,
-      rank: rankedData.rank,
-      leaguePoints: rankedData.leaguePoints,
-      wins: rankedData.wins,
-      losses: rankedData.losses,
-      winrate: winrate.toFixed(2),
-    };
-
-  } catch (error) {
-    console.error('Error fetching or calculating match stats:', error);
     throw error;
   }
 }

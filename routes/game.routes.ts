@@ -29,7 +29,8 @@ router.get("/ongoing", async (_req, res) => {
               rd_kda: true,
               rd_csm: true,
               rd_elo: true,
-              rd_div: true
+              rd_div: true,
+              rd_lp: true
             }
           });
 
