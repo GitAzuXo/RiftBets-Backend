@@ -202,10 +202,7 @@ export async function autoFinishProposals() {
         }
 
         // Mark proposal as finished for this user
-        await db.bet_option.update({
-          where: { bo_id: option.bo_id },
-          data: { bo_state: 'FINISHED' }
-        });
+        // (Moved outside the user loop to avoid premature finishing)
 
         // Give 1 coin to the user
         await db.user.update({
@@ -220,5 +217,10 @@ export async function autoFinishProposals() {
         console.error("Error fetching match data:", err);
       }
     }
+      // After processing all users for this proposal, mark it as finished
+      await db.bet_option.update({
+        where: { bo_id: option.bo_id },
+        data: { bo_state: 'FINISHED' }
+      });
+    }
   }
-}
