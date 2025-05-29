@@ -139,14 +139,17 @@ export async function autoFinishProposals() {
   for (const option of options) {
     if (option.bo_title !== "Remporte la partie") continue;
 
-    // Get all users in the game from useringame table
+    // Get all users in the game from user_in_match table
     const usersInGame = await db.user_in_match.findMany({
       where: { game_id: option.bo_game },
       select: { user_name: true }
     });
     if (!usersInGame || usersInGame.length === 0) continue;
 
-    // For each user in the game
+    // Check if all users are out of the match
+    let allUsersOut = true;
+    const userResults: { user_name: string, result: number, win: boolean, puuid: string }[] = [];
+
     for (const userInGame of usersInGame) {
       // Get puuid from riotdata
       const riotData = await db.riot_data.findFirst({
@@ -159,9 +162,11 @@ export async function autoFinishProposals() {
       // Check if player is still in the match
       const currentGame = await fetchCurrentMatch(puuid);
       if (currentGame && currentGame.id == option.bo_game) {
-        continue;
+        allUsersOut = false;
+        break; // At least one user still in game, don't finish yet
       }
 
+      // If user is out, get match result
       try {
         const matchid = "EUW1_" + option.bo_game;
         const matchUrl = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchid}`;
@@ -170,20 +175,31 @@ export async function autoFinishProposals() {
         const participant = matchData.info.participants.find((p: any) => p.puuid === puuid);
         if (!participant) continue;
         const win = participant.win;
-        let result = 1;
-        if (!win) result = 0;
+        let result = win ? 1 : 0;
+        userResults.push({ user_name: userInGame.user_name, result, win, puuid });
+      } catch (err) {
+        console.error("Error fetching match data:", err);
+      }
+    }
 
-        await db.game.update({
-          where: { game_id: option.bo_game },
-          data: { game_result: result, game_state: 'FINISHED' }
-        });
+    // Only finish proposal/game if all users are out
+    if (allUsersOut && userResults.length > 0) {
+      // Use the result of the first user as the game result (adapt if you want to aggregate differently)
+      const gameResult = userResults[0].result;
 
+      await db.game.update({
+        where: { game_id: option.bo_game },
+        data: { game_result: gameResult, game_state: 'FINISHED' }
+      });
+
+      for (const userResult of userResults) {
+        // Bets for this user
         const bets = await db.bet.findMany({
-          where: { bet_bo: option.bo_id, bet_user: userInGame.user_name }
+          where: { bet_bo: option.bo_id, bet_user: userResult.user_name }
         });
 
         for (const bet of bets) {
-          if (bet.bet_side === result) {
+          if (bet.bet_side === userResult.result) {
             const payout = Number(bet.bet_amount) * Number(bet.bet_odd);
             await db.user.update({
               where: { user_name: bet.bet_user },
@@ -201,26 +217,22 @@ export async function autoFinishProposals() {
           }
         }
 
-        // Mark proposal as finished for this user
-        // (Moved outside the user loop to avoid premature finishing)
-
         // Give 1 coin to the user
         await db.user.update({
-          where: { user_name: userInGame.user_name },
+          where: { user_name: userResult.user_name },
           data: { user_balance: { increment: 1 } }
         });
 
-        await getMatchesStats(riotData.rd_puuid);
+        await getMatchesStats(userResult.puuid);
 
-        console.log(`Proposal ${option.bo_id} for user ${userInGame.user_name} finished with result: ${win ? 'WIN' : 'LOSE'}`);
-      } catch (err) {
-        console.error("Error fetching match data:", err);
+        console.log(`Proposal ${option.bo_id} for user ${userResult.user_name} finished with result: ${userResult.win ? 'WIN' : 'LOSE'}`);
       }
-    }
-      // After processing all users for this proposal, mark it as finished
+
+      // Mark proposal as finished
       await db.bet_option.update({
         where: { bo_id: option.bo_id },
         data: { bo_state: 'FINISHED' }
       });
     }
   }
+}
