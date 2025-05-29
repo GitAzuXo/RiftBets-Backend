@@ -137,7 +137,7 @@ export async function autoFinishProposals() {
   });
 
   for (const option of options) {
-    if (option.bo_title !== "Parier sur l'issue de la partie") continue;
+    if (option.bo_title !== "Remporte la partie") continue;
 
     // Get all users in the game from useringame table
     const usersInGame = await db.user_in_match.findMany({

@@ -131,7 +131,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
   let betOption = await db.bet_option.findFirst({
     where: {
       bo_game: riotGameId,
-      bo_title: "Parier sur l'issue de la partie"
+      bo_title: "Remporte la partie"
     }
   });
 
@@ -139,7 +139,7 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
     betOption = await db.bet_option.create({
       data: {
         bo_game: riotGameId,
-        bo_title: "Parier sur l'issue de la partie",
+        bo_title: "Remporte la partie",
         bo_state: "OPEN"
       }
     });
