@@ -51,10 +51,10 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
                     rd_icon: summonerDatas.icon
                 }
             });
-            await getMatchesStats(summonerDatas.puuid);
             res.json({ message: "Thank you for linking your account"});
             return;
         }
+        await getMatchesStats(summonerDatas.puuid);
 
         // Update riot_data if already exists
         await db.riot_data.update({
