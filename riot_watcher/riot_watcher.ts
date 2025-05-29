@@ -213,6 +213,8 @@ export async function autoFinishProposals() {
           data: { user_balance: { increment: 1 } }
         });
 
+        await getMatchesStats(riotData.rd_puuid);
+
         console.log(`Proposal ${option.bo_id} for user ${userInGame.user_name} finished with result: ${win ? 'WIN' : 'LOSE'}`);
       } catch (err) {
         console.error("Error fetching match data:", err);
