@@ -86,11 +86,11 @@ router.post("/close", passport.authenticate("jwt", { session: false }), async (r
     }
     try {
         const { betOptionId } = req.body;
-        const updatedBetOption = await db.bet_option.update({
+        await db.bet_option.update({
             where: { bo_id: Number(betOptionId) },
             data: { bo_state: 'CLOSED' }
         });
-        res.json(updatedBetOption);
+        res.status(200).json({message: "Bet option closed successfully"});
     } catch (error) {
         res.status(500).json({ error: "Failed to close bet option" });
     }
