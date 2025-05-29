@@ -51,7 +51,8 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
                     rd_icon: summonerDatas.icon
                 }
             });
-            res.json({ message: "Thank you for linking your account", icon: summonerDatas.icon, level: summonerDatas.level });
+            await getMatchesStats(summonerDatas.puuid);
+            res.json({ message: "Thank you for linking your account"});
             return;
         }
 

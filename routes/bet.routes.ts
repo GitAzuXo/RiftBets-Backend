@@ -155,11 +155,22 @@ router.post(
 );
 
 router.get(
-    "/last",
+    "/getBets",
+    passport.authenticate("jwt", { session: false }),
     async (req, res) => {
+
+        if (
+            !req.user ||
+            typeof req.user !== "object" ||
+            !("username" in req.user)
+        ) {
+            res.status(401).json({ message: "Unauthorized: User not found" });
+            return;
+        }
+
         try {
-            const lastBets = await db.$queryRaw`SELECT * FROM view_last_3_bets_with_players`;
-            res.status(200).json(lastBets);
+            const bets = await db.$queryRaw`SELECT * FROM view_user_bets_summary WHERE bet_user = ${req.user.username}`;
+            res.status(200).json(bets);
         } catch (err) {
             console.error(err);
             res.status(500).json({ error: "Database error" });

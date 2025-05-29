@@ -95,45 +95,16 @@ router.get(
 );
 
 router.get(
-  "/getBets",
-  passport.authenticate("jwt", { session: false }),
-  async (req, res) => {
-    if (!req.user || typeof req.user !== "object" || !("username" in req.user)) {
-      res.status(401).json({ message: "Unauthorized: User not found" });
-      return;
+    "/last3bets",
+    async (req, res) => {
+        try {
+            const lastBets = await db.$queryRaw`SELECT * FROM view_last_3_bets_with_players`;
+            res.status(200).json(lastBets);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: "Database error" });
+        }
     }
-
-    const username = req.user.username;
-
-    try {
-      const user = await db.user.findUnique({
-        where: { user_name: username as string },
-        select: { user_name: true }
-      });
-
-      if (!user) {
-        res.status(404).json({ message: "User not found" });
-        return;
-      }
-
-      const bets = await db.bet.findMany({
-        where: { bet_user: username as string },
-        include: {
-          betOption: true
-        },
-        orderBy: { bet_id: "desc" }
-      });
-
-      const betsWithGain = bets.map(bet => ({
-        ...bet,
-        potential_gain: Number(bet.bet_amount) * Number(bet.bet_odd)
-      }));
-
-      res.json(betsWithGain);
-    } catch (err: any) {
-      res.status(500).json({ message: "Database error", error: err.message });
-    }
-  }
 );
 
 

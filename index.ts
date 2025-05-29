@@ -58,11 +58,11 @@ setInterval(async () => {
     }
 }, 24 * 1000);
 
-/**setInterval(async () => {
+setInterval(async () => {
     try {
         await autoFinishProposals();
         console.log("Checked for soloq finished.");
     } catch (err) {
         console.error("Error in autoFinishProposals:", err);
     }
-}, 45 * 1000);**/
+}, 45 * 1000);
