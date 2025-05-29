@@ -169,7 +169,7 @@ router.get(
         }
 
         try {
-            const bets = await db.$queryRaw`SELECT * FROM view_user_bets_summary WHERE bet_user = ${req.user.username}`;
+            const bets = await db.$queryRaw`SELECT * FROM view_user_bets_summary WHERE bettor_name = ${req.user.username}`;
             res.status(200).json(bets);
         } catch (err) {
             console.error(err);
