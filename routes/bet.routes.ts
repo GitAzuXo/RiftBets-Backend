@@ -48,8 +48,20 @@ router.post(
                 return;
             }
 
-            // Check if user already bet on this side for this proposal
-            let betsidenb = betSide === "WIN" ? 1 : 0;
+            const bettorTeam = await db.user_in_match.findFirst({
+                where: { game_id: betoption.bo_game },
+                select: { player_team: true },
+            });
+            let betsidenb: number;
+            if (bettorTeam?.player_team === undefined) {
+                res.status(400).json({ message: "Could not determine player's team for bet side." });
+                return;
+            }
+            if (betSide === "WIN") {
+                betsidenb = bettorTeam.player_team;
+            } else {
+                betsidenb = bettorTeam.player_team === 100 ? 200 : 100;
+            }
             const existingBet = await db.bet.findFirst({
                 where: {
                     bet_user: user.user_name,
