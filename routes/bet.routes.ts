@@ -95,7 +95,7 @@ router.post(
                     bet_amount: betAmount,
                     bet_side: betsidenb,
                     bet_odd:
-                        betSide === "WIN"
+                        betSide === 100
                             ? gameOdds.odd_win
                             : gameOdds.odd_lose
                 },
@@ -111,11 +111,11 @@ router.post(
             const [totalWin, totalLose] = await Promise.all([
                 db.bet.aggregate({
                     _sum: { bet_amount: true },
-                    where: { bet_bo: optionId, bet_side: 1 },
+                    where: { bet_bo: optionId, bet_side: 100 },
                 }),
                 db.bet.aggregate({
                     _sum: { bet_amount: true },
-                    where: { bet_bo: optionId, bet_side: 0 },
+                    where: { bet_bo: optionId, bet_side: 200 },
                 }),
             ]);
             const amountonvictory = totalWin._sum.bet_amount || 0;

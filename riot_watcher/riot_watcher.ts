@@ -157,11 +157,8 @@ export async function autoFinishGames() {
           where: { game_id: game.game_id },
           data: { game_state: "FINISHED" }
         });
-        console.log(`Game ${game.game_id} marked as finished.`);
-        console.log(`Users finished: ${usersFinished.map(u => u.user_name).join(', ')}`);
         setTimeout(() => {
           fetchResultMatch(game.game_id, usersFinished);
-          console.log(`Fetching match results for game ${game.game_id} with users: ${usersFinished.map(u => u.user_name).join(', ')}`);
         }, 10000);
       }
     }
