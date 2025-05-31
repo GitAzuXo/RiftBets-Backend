@@ -156,7 +156,7 @@ export async function autoFinishGames() {
           data: { game_state: "FINISHED" }
         });
         console.log(`Game ${game.game_id} marked as finished.`);
-        setTimeout(() => fetchResultMatch(game.game_id, usersFinished), 10000); // 10 second delay
+        setTimeout(() => fetchResultMatch(game.game_id, usersFinished), 10000);
         usersFinished = [];
       }
     }
@@ -171,8 +171,12 @@ async function fetchResultMatch(gameId: bigint, users: { user_name: string, puui
     const matchData = response.data;
 
     let winningTeam: number = 0;
+    if (users.length === 0) {
+      console.error('No users provided to fetchResultMatch');
+      return;
+    }
     for (const participant of matchData.info.participants) {
-      if (participant.puuid = users[0].puuid) {
+      if (participant.puuid === users[0].puuid) {
         winningTeam = participant.win ? participant.teamId : (participant.teamId === 100 ? 200 : 100);
       }
     }
