@@ -11,7 +11,7 @@ import riotRoutes from "./routes/riot.routes";
 import betOptionRoutes from "./routes/betoption.routes";
 import { PrismaClient } from "@prisma/client";
 import { autoCreateProposals } from "./routes/riot.routes";
-import { autoFinishProposals } from "./riot_watcher/riot_watcher";
+import { autoFinishGames } from "./riot_watcher/riot_watcher";
 import { Request, Response } from "express";
 
 dotenv.config();
@@ -60,9 +60,9 @@ setInterval(async () => {
 
 setInterval(async () => {
     try {
-        await autoFinishProposals();
+        await autoFinishGames();
         console.log("Checked for soloq finished.");
     } catch (err) {
-        console.error("Error in autoFinishProposals:", err);
+        console.error("Error in autoFinishGames:", err);
     }
 }, 45 * 1000);

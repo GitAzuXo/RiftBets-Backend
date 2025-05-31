@@ -124,115 +124,97 @@ export async function fetchCurrentMatch(puuid: string) {
   }
 }
 
-export async function autoFinishProposals() {
-  // Get all proposals that are not finished
-  const options = await db.bet_option.findMany({
-    where: { bo_state: { not: 'FINISHED' } },
-    select: {
-      bo_id: true,
-      bo_game: true,
-      bo_state: true,
-      bo_title: true
-    }
-  });
-
-  for (const option of options) {
-    if (option.bo_title !== "Remporte la partie") continue;
-
-    // Get all users in the game from user_in_match table
-    const usersInGame = await db.user_in_match.findMany({
-      where: { game_id: option.bo_game },
-      select: { user_name: true }
-    });
-    if (!usersInGame || usersInGame.length === 0) continue;
-
-    // Check if all users are out of the match
-    let allUsersOut = true;
-    const userResults: { user_name: string, result: number, win: boolean, puuid: string }[] = [];
-
-    for (const userInGame of usersInGame) {
-      // Get puuid from riotdata
-      const riotData = await db.riot_data.findFirst({
-        where: { rd_user: userInGame.user_name },
-        select: { rd_puuid: true }
+export async function autoFinishGames() {
+  let usersFinished: { user_name: string, puuid: string }[] = [];
+  db.game.findMany({
+    where: { game_state: "ONGOING" },
+    select: { game_id: true }
+  }).then(async (games) => {
+    for (const game of games) {
+      const users = await db.user_in_match.findMany({
+        where: { game_id: game.game_id },
+        select: { user_name: true }
       });
-      if (!riotData) continue;
-      const puuid = riotData.rd_puuid;
-
-      // Check if player is still in the match
-      const currentGame = await fetchCurrentMatch(puuid);
-      if (currentGame && currentGame.id == option.bo_game) {
-        allUsersOut = false;
-        break; // At least one user still in game, don't finish yet
-      }
-
-      // If user is out, get match result
-      try {
-        const matchid = "EUW1_" + option.bo_game;
-        const matchUrl = `https://europe.api.riotgames.com/lol/match/v5/matches/${matchid}`;
-        const matchRes = await axios.get(matchUrl, { headers });
-        const matchData = matchRes.data;
-        const participant = matchData.info.participants.find((p: any) => p.puuid === puuid);
-        if (!participant) continue;
-        const win = participant.win;
-        let result = win ? 1 : 0;
-        userResults.push({ user_name: userInGame.user_name, result, win, puuid });
-      } catch (err) {
-        console.error("Error fetching match data:", err);
-      }
-    }
-
-    // Only finish proposal/game if all users are out
-    if (allUsersOut && userResults.length > 0) {
-      // Use the result of the first user as the game result (adapt if you want to aggregate differently)
-      const gameResult = userResults[0].result;
-
-      await db.game.update({
-        where: { game_id: option.bo_game },
-        data: { game_result: gameResult, game_state: 'FINISHED' }
-      });
-
-      for (const userResult of userResults) {
-        // Bets for this user
-        const bets = await db.bet.findMany({
-          where: { bet_bo: option.bo_id, bet_user: userResult.user_name }
+      for (const user of users) {
+        const puuidObj = await db.riot_data.findUnique({
+          where: { rd_user: user.user_name },
+          select: { rd_puuid: true }
         });
-
-        for (const bet of bets) {
-          if (bet.bet_side === userResult.result) {
-            const payout = Number(bet.bet_amount) * Number(bet.bet_odd);
-            await db.user.update({
-              where: { user_name: bet.bet_user },
-              data: { user_balance: { increment: payout } }
-            });
-            await db.bet.updateMany({
-              where: { bet_bo: option.bo_id, bet_user: bet.bet_user },
-              data: { bet_state: 'WON' }
-            });
+        if (puuidObj != null && puuidObj.rd_puuid) {
+          const matchData = await fetchCurrentMatch(puuidObj.rd_puuid);
+          if (matchData.error) {
+            console.log(`Game ${game.game_id} finished for user ${user.user_name}`);
+            usersFinished.push({ user_name: user.user_name, puuid: puuidObj.rd_puuid });
           } else {
-            await db.bet.updateMany({
-              where: { bet_bo: option.bo_id, bet_user: bet.bet_user },
-              data: { bet_state: 'LOST' }
-            });
+            console.log(`Game ${game.game_id} is still ongoing for user ${user.user_name}`);
           }
         }
-
-        // Give 1 coin to the user
-        await db.user.update({
-          where: { user_name: userResult.user_name },
-          data: { user_balance: { increment: 1 } }
-        });
-
-        await getMatchesStats(userResult.puuid);
-
-        console.log(`Proposal ${option.bo_id} for user ${userResult.user_name} finished with result: ${userResult.win ? 'WIN' : 'LOSE'}`);
       }
+      if (usersFinished.length > 0) {
+        await db.game.update({
+          where: { game_id: game.game_id },
+          data: { game_state: "FINISHED" }
+        });
+        console.log(`Game ${game.game_id} marked as finished.`);
+        await fetchResultMatch(game.game_id, usersFinished);
+        usersFinished = [];
+      }
+    }
+  });
+}
 
-      // Mark proposal as finished
+async function fetchResultMatch(gameId: bigint, users: { user_name: string, puuid: string }[]){
+  try {
+    const newId = "EUW1_" + gameId.toString();
+    const url = `https://europe.api.riotgames.com/lol/match/v5/matches/${newId}`;
+    const response = await axios.get(url, { headers });
+    const matchData = response.data;
+
+    let winningTeam: number = 0;
+    for (const participant of matchData.info.participants) {
+      if (participant.puuid = users[0].puuid) {
+        winningTeam = participant.win ? participant.teamId : (participant.teamId === 100 ? 200 : 100);
+      }
+    }
+    await db.game.update({
+      where: { game_id: gameId },
+      data: { game_result: winningTeam }
+    });
+    const bos = await db.bet_option.findFirst({
+      where: { bo_game: gameId, bo_title: "Remporte la partie" },
+      select: { bo_id: true }
+    });
+    if (bos?.bo_id) {
       await db.bet_option.update({
-        where: { bo_id: option.bo_id },
-        data: { bo_state: 'FINISHED' }
+        where: { bo_id: bos.bo_id },
+        data: { bo_state: "FINISHED" }
       });
     }
+    const bets = await db.bet.findMany({
+      where: { bet_bo: bos?.bo_id },
+      select: { bet_user: true, bet_amount: true, bet_odd: true, bet_side: true, bet_id: true }
+    });
+    for (const bet of bets) {
+      if (bet.bet_side === winningTeam) {
+        const betAmount = Number(bet.bet_amount);
+        const betOdd = Number(bet.bet_odd);
+        await db.user.update({
+          where: { user_name: bet.bet_user },
+          data: { user_balance: { increment: betAmount * betOdd } }
+        });
+        await db.bet.update({
+          where: { bet_id: bet.bet_id },
+          data: { bet_state: "WON" }
+        });
+      } else {
+        await db.bet.update({
+          where: { bet_id: bet.bet_id },
+          data: { bet_state: "LOST" }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching match result:', error);
+    throw error;
   }
 }
