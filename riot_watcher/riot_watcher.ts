@@ -156,7 +156,7 @@ export async function autoFinishGames() {
           data: { game_state: "FINISHED" }
         });
         console.log(`Game ${game.game_id} marked as finished.`);
-        await fetchResultMatch(game.game_id, usersFinished);
+        setTimeout(() => fetchResultMatch(game.game_id, usersFinished), 10000); // 10 second delay
         usersFinished = [];
       }
     }
