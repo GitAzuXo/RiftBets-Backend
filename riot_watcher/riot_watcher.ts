@@ -125,12 +125,13 @@ export async function fetchCurrentMatch(puuid: string) {
 }
 
 export async function autoFinishGames() {
-  let usersFinished: { user_name: string, puuid: string }[] = [];
   db.game.findMany({
     where: { game_state: "ONGOING" },
     select: { game_id: true }
   }).then(async (games) => {
     for (const game of games) {
+      let usersFinished: { user_name: string, puuid: string }[] = [];
+
       const users = await db.user_in_match.findMany({
         where: { game_id: game.game_id },
         select: { user_name: true }
@@ -142,6 +143,7 @@ export async function autoFinishGames() {
         });
         if (puuidObj != null && puuidObj.rd_puuid) {
           const matchData = await fetchCurrentMatch(puuidObj.rd_puuid);
+          console.log(`Checking game ${game.game_id} for user ${user.user_name} with PUUID ${puuidObj.rd_puuid}`);
           if (matchData.error) {
             console.log(`Game ${game.game_id} finished for user ${user.user_name}`);
             usersFinished.push({ user_name: user.user_name, puuid: puuidObj.rd_puuid });
@@ -156,8 +158,11 @@ export async function autoFinishGames() {
           data: { game_state: "FINISHED" }
         });
         console.log(`Game ${game.game_id} marked as finished.`);
-        setTimeout(() => fetchResultMatch(game.game_id, usersFinished), 10000);
-        usersFinished = [];
+        console.log(`Users finished: ${usersFinished.map(u => u.user_name).join(', ')}`);
+        setTimeout(() => {
+          fetchResultMatch(game.game_id, usersFinished);
+          console.log(`Fetching match results for game ${game.game_id} with users: ${usersFinished.map(u => u.user_name).join(', ')}`);
+        }, 10000);
       }
     }
   });
