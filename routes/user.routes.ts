@@ -17,15 +17,23 @@ router.get(
 
     try {
       const user = await db.user.findUnique({
-        where: { user_name: username as string },
-        include: {
-          bets: {
-            orderBy: { bet_id: "desc" },
-            take: 1,
-            include: { betOption: true }
-          },
-          riot_data: true
+      where: { user_name: username as string },
+      include: {
+        bets: {
+        orderBy: { bet_id: "desc" },
+        take: 1,
+        include: { betOption: true }
         }
+      }
+      });
+
+      // Merge all riot_data from user_account into an array
+      let allRiotData: any[] = [];
+      await db.user_account.findMany({
+        where: { user_name: username as string },
+        include: { riotData: true }
+      }).then(accounts => {
+        allRiotData = accounts.map(account => account.riotData).filter(data => data !== null);
       });
 
       if (!user) {
@@ -54,24 +62,6 @@ router.get(
           lastBetGainOrLoss = `-${lastBet.bet_amount}`;
         }
       }
-
-      let icon = null;
-      let level = null;
-      let tag = null;
-      let elo = null;
-      let div = null;
-      let tagline = null;
-      let lp = null;
-      if (user.riot_data) {
-        icon = user.riot_data.rd_icon ?? null;
-        level = user.riot_data.rd_level ?? null;
-        tag = user.riot_data.rd_tagline ?? null;
-        elo = user.riot_data.rd_elo ?? null;
-        div = user.riot_data.rd_div ?? null;
-        tagline = user.riot_data.rd_tagline;
-        lp = user.riot_data.rd_lp ?? null;
-      }
-
       res.json({
         username: user.user_name,
         role: user.user_role,
@@ -79,14 +69,8 @@ router.get(
         totalBets,
         totalWins,
         lastBetGainOrLoss,
-        icon,
-        level,
         daily: user.user_daily,
-        tag,
-        elo,
-        div,
-        lp,
-        tagline,
+        accounts: {allRiotData}
       });
     } catch (err: any) {
       res.status(500).json({ message: "Database error", error: err.message });

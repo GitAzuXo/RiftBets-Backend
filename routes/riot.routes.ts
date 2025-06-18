@@ -31,19 +31,13 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
         const riottagline = name + "#" + tagline;
 
         // Check if already linked
-        const alreadyLinked = await db.riot_data.findUnique({
-            where: { rd_user: username }
+        const alreadyLinked = await db.riot_data.findFirst({
+            where: { rd_puuid: summonerDatas.puuid },
         });
 
         if (!alreadyLinked) {
-            await db.user.update({
-                where: { user_name: username },
-                data: { user_balance: { increment: 20 } }
-            });
-            // Insert new riot_data
-            await db.riot_data.create({
+            const riotData = await db.riot_data.create({
                 data: {
-                    rd_user: username,
                     rd_tagline: riottagline,
                     rd_puuid: summonerDatas.puuid,
                     rd_suuid: summonerDatas.suuid,
@@ -51,14 +45,21 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
                     rd_icon: summonerDatas.icon
                 }
             });
+            await db.user_account.create({
+                data: {
+                    user_name: username,
+                    rd_id: riotData.rd_id
+                }
+            });
             res.json({ message: "Thank you for linking your account"});
+            await getMatchesStats(summonerDatas.puuid);
             return;
         }
         await getMatchesStats(summonerDatas.puuid);
 
         // Update riot_data if already exists
         await db.riot_data.update({
-            where: { rd_user: username },
+            where: { rd_id: alreadyLinked.rd_id },
             data: {
                 rd_tagline: riottagline,
                 rd_puuid: summonerDatas.puuid,
@@ -74,36 +75,6 @@ router.post("/create", passport.authenticate("jwt", { session: false }), async (
     }
 });
 
-/**router.post("/matchdata", passport.authenticate("jwt", { session: false }), async (req, res) => {
-    const sqlId = "SELECT user_id FROM user WHERE user_name = ?";
-    try {
-        const { puuid } = req.body;
-        if (!puuid) {
-            res.status(400).json({ error: "Puuid is required" });
-            return;
-        }
-
-        const username = (req.user as { username: string }).username;
-
-        const [rows1] = await db.query<RowDataPacket[]>(sqlId, [username]);
-
-        if (rows1.length === 0) {
-            res.status(404).json({ message: "Id not found" });
-            return;
-        }
-
-        const userId = rows1[0].user_id;
-
-        const data = await getMatchesStats(puuid);
-
-        await db.execute("INSERT INTO riotdata (riot_user, riot_winrate, riot_csm, riot_kda) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE riot_user = VALUES(riot_user), riot_winrate = VALUES(riot_winrate), riot_csm = VALUES(riot_csm), riot_kda = VALUES(riot_kda);",[userId, data.winrate, data.avgCSPerMin, data.avgKDA]);
-
-        res.json({ message: "Riot data updated successfully" });
-    } catch (error) {
-        res.status(500).json({ error: "Internal server error" });
-    }
-});**/
-
 export async function autoCreateProposals() {
     const users = await db.riot_data.findMany({
         where: {
@@ -112,8 +83,12 @@ export async function autoCreateProposals() {
             }
         },
         select: {
-            rd_user: true,
-            rd_puuid: true
+            rd_puuid: true,
+            user_account: {
+                select: {
+                    user_name: true
+                }
+            }
         }
     });
 
@@ -121,7 +96,9 @@ export async function autoCreateProposals() {
 
     for (const user of users) {
         const puuid = user.rd_puuid;
-        const username = user.rd_user;
+        const username = user.user_account?.[0]?.user_name;
+
+        if (!username) continue;
 
         const currentGame = await fetchCurrentMatch(puuid);
 
@@ -137,9 +114,15 @@ export async function autoCreateProposals() {
                 select: { bo_id: true }
             });
 
-            if (!exists) {
+            const accountId = await db.riot_data.findFirst({
+                where: { rd_puuid: puuid },
+                select: { rd_id: true }
+            });
+            
+
+            if (!exists && accountId != null) {
                 await getMatchesStats(puuid);
-                await openOrJoinGame(username, gameId, teamId, champion, BigInt(gameTime));
+                await openOrJoinGame(username, accountId.rd_id, gameId, teamId, champion, BigInt(gameTime));
                 proposalsCreated++;
             } else {
                 console.log(`Proposal already exists for gameId=${gameId}, skipping creation.`);
@@ -149,5 +132,31 @@ export async function autoCreateProposals() {
 
     console.log(`[autoCreateProposals] ${proposalsCreated} proposals created.`);
 }
+
+router.delete("/delete/:rd_id", passport.authenticate("jwt", { session: false }), async (req, res) => {
+    if (!req.user || typeof req.user !== "object" || !("username" in req.user)) {
+        res.status(401).json({ message: "Unauthorized: User not found" });
+        return;
+    }
+    try {
+        const rd_id = parseInt(req.params.rd_id, 10);
+        if (isNaN(rd_id)) {
+            res.status(400).json({ error: "Invalid rd_id" });
+            return;
+        }
+        const xdeleted = await db.user_account.deleteMany({
+            where: { rd_id, user_name: (req.user as { username: string }).username }
+        });
+
+        if(xdeleted){
+            const deleted = await db.riot_data.delete({
+                where: { rd_id }
+            });
+            res.json({ message: "Account deleted successfully", tagline: deleted.rd_tagline });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 export default router;

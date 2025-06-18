@@ -134,11 +134,11 @@ export async function autoFinishGames() {
 
       const users = await db.user_in_match.findMany({
         where: { game_id: game.game_id },
-        select: { user_name: true }
+        select: { user_name: true, user_account: true }
       });
       for (const user of users) {
-        const puuidObj = await db.riot_data.findUnique({
-          where: { rd_user: user.user_name },
+        const puuidObj = await db.riot_data.findFirst({
+          where: { rd_id: user.user_account },
           select: { rd_puuid: true }
         });
         if (puuidObj != null && puuidObj.rd_puuid) {

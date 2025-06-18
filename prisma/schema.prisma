@@ -12,15 +12,15 @@ model user {
   user_password String    @db.VarChar(255)
   user_balance  Decimal   @default(0.00) @db.Decimal(10, 2)
   user_role     String    @default("USER") @db.VarChar(20)
-  user_daily    DateTime? 
+  user_daily    DateTime?
 
   bets          bet[]
-  riot_data     riot_data?
   userInMatches user_in_match[]
+  user_account  user_account[]
 }
 
 model game {
-  game_id     BigInt         @id
+  game_id     BigInt    @id
   game_state  GameState
   game_start  BigInt
   game_result Int
@@ -30,8 +30,8 @@ model game {
 }
 
 model champion {
-  champion_id   Int          @id
-  champion_name String       @db.VarChar(100)
+  champion_id   Int    @id
+  champion_name String @db.VarChar(100)
 
   userInMatches user_in_match[]
 }
@@ -41,19 +41,22 @@ model user_in_match {
   game_id         BigInt
   player_team     Int
   player_champion Int
+  user_account    Int
 
   user     user     @relation(fields: [user_name], references: [user_name])
   game     game     @relation(fields: [game_id], references: [game_id])
   champion champion @relation(fields: [player_champion], references: [champion_id])
+  riotData riot_data @relation(fields: [user_account], references: [rd_id])
 
   @@id([user_name, game_id])
 }
 
+
 model bet_option {
-  bo_id    Int     @id @default(autoincrement())
+  bo_id    Int    @id @default(autoincrement())
   bo_game  BigInt
-  bo_title String  @db.VarChar(150)
-  bo_state String  @default("OPEN") @db.VarChar(50)
+  bo_title String @db.VarChar(150)
+  bo_state String @default("OPEN") @db.VarChar(50)
 
   bets     bet[]
   gameOdds game_odd[]
@@ -65,41 +68,49 @@ model game_odd {
   odd_win  Decimal @db.Decimal(4, 2)
   odd_lose Decimal @db.Decimal(4, 2)
 
-  game     game     @relation(fields: [game_id], references: [game_id])
+  game      game       @relation(fields: [game_id], references: [game_id])
   betOption bet_option @relation(fields: [odd_bo], references: [bo_id])
 
   @@id([game_id, odd_bo])
 }
 
 model bet {
-  bet_id       Int      @id @default(autoincrement())
-  bet_user     String
-  bet_bo       Int
-  bet_side     Int
-  bet_amount   Decimal  @db.Decimal(10, 2)
-  bet_state    BetState @default(PLACED)
-  bet_odd      Decimal  @db.Decimal(4, 2)
+  bet_id        Int      @id @default(autoincrement())
+  bet_user      String
+  bet_bo        Int
+  bet_side      Int
+  bet_amount    Decimal  @db.Decimal(10, 2)
+  bet_state     BetState @default(PLACED)
+  bet_odd       Decimal  @db.Decimal(4, 2)
   bet_timestamp DateTime @default(now()) @updatedAt
 
-  user       user      @relation(fields: [bet_user], references: [user_name])
-  betOption  bet_option @relation(fields: [bet_bo], references: [bo_id])
+  user      user       @relation(fields: [bet_user], references: [user_name])
+  betOption bet_option @relation(fields: [bet_bo], references: [bo_id])
 }
 
 model riot_data {
-  rd_user    String   @id
-  rd_tagline String   @db.VarChar(200)
-  rd_puuid   String   @db.VarChar(350)
-  rd_suuid   String   @db.VarChar(350)
-  rd_level   Int
-  rd_icon    Int
-  rd_winrate Decimal? @db.Decimal(4, 2)
-  rd_kda    Decimal? @db.Decimal(4, 2)
-  rd_csm   Decimal? @db.Decimal(4, 1)
-  rd_elo   String?  @db.VarChar(20)
-  rd_div String?  @db.VarChar(10)
-  rd_lp  Int?
+  rd_id        Int            @id @default(autoincrement())
+  rd_tagline   String         @db.VarChar(200)
+  rd_puuid     String         @db.VarChar(350)
+  rd_suuid     String         @db.VarChar(350)
+  rd_level     Int
+  rd_icon      Int
+  rd_winrate   Decimal?       @db.Decimal(4, 2)
+  rd_kda       Decimal?       @db.Decimal(4, 2)
+  rd_csm       Decimal?       @db.Decimal(4, 1)
+  rd_elo       String?        @db.VarChar(20)
+  rd_div       String?        @db.VarChar(10)
+  rd_lp        Int?
+  user_account user_account[]
+  userInMatch user_in_match[]
+}
 
-  user       user     @relation(fields: [rd_user], references: [user_name])
+model user_account {
+  user_name String @id
+  rd_id     Int
+
+  user     user      @relation(fields: [user_name], references: [user_name])
+  riotData riot_data @relation(fields: [rd_id], references: [rd_id])
 }
 
 enum GameState {

@@ -21,7 +21,7 @@ router.get("/ongoing", async (_req, res) => {
         const serializedUsers = await Promise.all(users.map(async user => {
           const [riotData, champion] = await Promise.all([
             db.riot_data.findUnique({
-              where: { rd_user: user.user_name },
+              where: { rd_id: user.user_account },
               select: {
                 rd_tagline: true,
                 rd_level: true,
@@ -80,7 +80,7 @@ router.get("/ongoing", async (_req, res) => {
  * @param gameStart Timestamp of game start (BigInt)
  */
 
-export async function openOrJoinGame(user_name: string, riotGameId: number, teamId: number, championId: number, gameStart: bigint) {
+export async function openOrJoinGame(user_name: string, accountId: number, riotGameId: number, teamId: number, championId: number, gameStart: bigint) {
   let game = await db.game.findUnique({
     where: { game_id: riotGameId }
   });
@@ -112,11 +112,11 @@ export async function openOrJoinGame(user_name: string, riotGameId: number, team
       user_name,
       game_id: riotGameId,
       player_team: teamId,
-      player_champion: championId
+      player_champion: championId,
+      user_account: accountId
     }
   });
 
-  // 4. Check how many users are in this game and on the same team
   const teammates = await db.user_in_match.findMany({
     where: {
       game_id: riotGameId,
